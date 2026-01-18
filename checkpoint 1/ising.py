@@ -16,24 +16,19 @@ class Ising:
         self.L = L
         self.kBT = kBT
         self.sweep = L**2                                       # Define a unique unit of time for an LxL system
-        self.count = 0                                           # Keep track of how many sweeps have passed
+        self.count = 0                                          # Keep track of how many sweeps have passed
+        self.M = np.empty(0)                                     # Initialise empty list to track magnetisation
 
         while dynamics not in {'G', 'K'}:
             dynamics = input("Please enter 'G' or 'K' ")
 
-        self.generate_initial_state(L)
+        self.S = np.random.choice([-1, 1], size=(L + 2, L + 2))
+        self.apply_PBCs()
 
         if dynamics == 'G':
             self.update = self.glauber
         else:
             self.update = self.kawasaki
-
-        self.run()
-
-    def generate_initial_state(self, L):
-        """randomly generate the initial Ising model lattice"""
-        self.S = np.array([[(random.randint(0, 1) * 2 -1) for i in range(L+2)] for j in range(L+2)]) # Initial LxL lattice
-        self.apply_PBCs()
     
     def apply_PBCs(self):
         """apply periodic boundary conditions after updating/generating new system"""
@@ -42,7 +37,20 @@ class Ising:
         self.S[0:-1, 0] = self.S[0:-1, -2] # Copy last lattice column to first ghost column
         self.S[0:-1, -1] = self.S[0:-1, 1] # Copy first lattice column to last ghost column
 
-    def run(self):
+    def run(self, t):
+        """run ten sweeps of the simulation using Glauber or Kawasaki dynamics and update the image.
+            t: {int} number of sweeps for which to run the simulation"""
+        for i in range((t + 100) * self.sweep):                          
+            self.update()                                         # Update the lattice
+            self.apply_PBCs()                                     # Refresh ghost cells
+            self.count += 1                                       # Add 10 to the sweep counter
+
+            if self.count <= 100:
+                continue
+            elif self.count % 10 == 0:
+                self.M = np.append(self.M, np.sum(self.S))
+      
+    def run_ani(self):
         """run the simulation with an animated grid. blue corresponds to S=-1 and yellow corresponds to S=+1"""
         fig, ax = plt.subplots()
         ani = FuncAnimation(fig, self.frame, cache_frame_data=False)
@@ -70,7 +78,7 @@ class Ising:
 
         dE = self.delta_E_G(i_row, i_col)
 
-        if self.spin_flip(dE):
+        if self.metropolis(dE):
             self.S[i_row, i_col] *= -1
 
     def kawasaki(self):
@@ -88,9 +96,8 @@ class Ising:
 
         dE = self.delta_E_K(i_row, i_col, j_row, j_col)
 
-        if self.spin_flip(dE):
+        if self.metropolis(dE):
             self.S[i_row, i_col], self.S[j_row, j_col] = self.S[j_row, j_col], self.S[i_row, i_col]
-
 
     def delta_E_G(self, i_row, i_col):
         """calculate the energy change upon flipping spin state i in Glauber dynamics.
@@ -131,8 +138,7 @@ class Ising:
 
         return -2 * (I_sum + J_sum)                                  # Total energy change contribution
 
-    
-    def spin_flip(self, dE):
+    def metropolis(self, dE):
         """use the Metropolis algorithm to decide whether to flip the spin state"""
         if dE <= 0:
             return True                                      # Always accept energy-lowering flip
@@ -143,5 +149,8 @@ class Ising:
 
 
 if __name__ == "__main__":
-    L, kBT, Dynamics = int(sys.argv[1]), float(sys.argv[2]), sys.argv[3]
-    I = Ising(L, kBT, Dynamics)
+    #L, kBT, dynamics = int(sys.argv[1]), float(sys.argv[2]), sys.argv[3]
+    L, kBT, dynamics = 50, 2, 'G'
+    I = Ising(L, kBT, dynamics)
+    #I.run(10000)
+    I.run_ani
