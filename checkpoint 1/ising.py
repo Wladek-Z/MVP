@@ -153,4 +153,4 @@ if __name__ == "__main__":
     L, kBT, dynamics = 50, 2, 'G'
     I = Ising(L, kBT, dynamics)
     #I.run(10000)
-    I.run_ani
+    I.run_ani()
