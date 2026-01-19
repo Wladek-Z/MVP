@@ -10,7 +10,7 @@ def write_task4(filepath):
     
     data = []                                   # Initialise empty data array
     for kBT in thermal_energies:
-        I = Ising(50, kBT, "G")
+        I = Ising(50, kBT, 'G')
         I.run(10000)
         M, M2 = I.avg_M()
         X = I.susceptibility(M, M2)
