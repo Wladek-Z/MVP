@@ -26,9 +26,9 @@ class Ising:
         self.S = np.random.choice([-1, 1], size=(L, L))
 
         if dynamics == 'G':
-            self.update = self.glauber
+            self.update = self.Glauber
         else:
-            self.update = self.kawasaki
+            self.update = self.Kawasaki
     
     def apply_PBCs(self):
         """apply periodic boundary conditions after updating/generating new system.
@@ -65,13 +65,15 @@ class Ising:
            t: {none} not used, required for animation"""
         plt.cla()                                                 # Clear the axis
         img = plt.imshow(self.S[1:-1, 1:-1], cmap='plasma')       # Save previous image
+        plt.title(f"Ising Model: {self.update.__name__} dynamics \n kBT = {self.kBT}, L = {self.L}")
+        plt.axis('off')
 
         for i in range(self.sweep * 10):                          # Run 10 sweeps of the algorithm
             self.update()                                         # Update the lattice
         
         return img
 
-    def glauber(self):
+    def Glauber(self):
         """update the system using Glauber dynamics"""
         """choose random state i"""
         i_row = random.randint(0, self.L-1)
@@ -82,7 +84,7 @@ class Ising:
         if self.metropolis(dE):
             self.S[i_row, i_col] *= -1
 
-    def kawasaki(self):
+    def Kawasaki(self):
         """update the system using Kawasaki dynamics"""
         """choose random states i and j"""
         i_row = random.randint(0, self.L-1)
@@ -161,7 +163,7 @@ class Ising:
 
 if __name__ == "__main__":
     #L, kBT, dynamics = int(sys.argv[1]), float(sys.argv[2]), sys.argv[3]
-    L, kBT, dynamics = 50, 2, 'K'
+    L, kBT, dynamics = 50, 2, 'G'
     I = Ising(L, kBT, dynamics)
     #I.run(10000)
     I.run_ani()
