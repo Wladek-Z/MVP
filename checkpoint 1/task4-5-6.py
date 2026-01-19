@@ -16,6 +16,7 @@ def write_task4(filepath):
         X = I.susceptibility(M, M2)
         data.append([kBT, M, X])
     
+    """write thermal energy, average total magnetisation and susceptibility data to file"""
     df = pd.DataFrame(data, columns=['kBT', '<M>', 'chi'])
     df.to_csv(filepath, mode='a', index=False, header=False)
 

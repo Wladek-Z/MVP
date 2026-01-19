@@ -12,6 +12,8 @@ class Ising:
                L: {int} system size
              kBT: {float} thermal energy (J=1)
         dynamics: {str} 'G' or 'K' for Glauber/Kawasaki dynamics, respectively
+        
+        Note: J has been set to 1 and not included as a parameter
         """
         self.L = L
         self.kBT = kBT
@@ -21,8 +23,7 @@ class Ising:
         while dynamics not in {'G', 'K'}:
             dynamics = input("Please enter 'G' or 'K' ")
 
-        self.S = np.random.choice([-1, 1], size=(L + 2, L + 2))
-        self.apply_PBCs()
+        self.S = np.random.choice([-1, 1], size=(L, L))
 
         if dynamics == 'G':
             self.update = self.glauber
@@ -30,7 +31,8 @@ class Ising:
             self.update = self.kawasaki
     
     def apply_PBCs(self):
-        """apply periodic boundary conditions after updating/generating new system"""
+        """apply periodic boundary conditions after updating/generating new system.
+        Note: currently not used as PBCs are implemented using modulo arithmetic"""
         self.S[0, 0:-1] = self.S[-2, 0:-1] # Copy last lattice row to first ghost row
         self.S[-1, 0:-1] = self.S[1, 0:-1] # Copy first lattice row to last ghost row
         self.S[0:-1, 0] = self.S[0:-1, -2] # Copy last lattice column to first ghost column
@@ -38,13 +40,11 @@ class Ising:
 
     def run(self, t):
         """run the simulation for t sweeps.
-            t: {int} number of sweeps for which to run the simulation"""
+           t: {int} number of sweeps for which to run the simulation"""
         count = 0                                               # Keep track of how many sweeps have passed
         for i in range(t + 100):         
-
             for j in range(self.sweep):                         # Perform a sweep of the algorithm
                 self.update()                                   # Update the lattice
-                self.apply_PBCs()                               # Refresh ghost cells
 
             count += 1                                          # Add 1 to the sweep counter
 
@@ -52,7 +52,7 @@ class Ising:
                 continue
             elif count % 10 == 0:                               # Take measurements every 10 sweeps
                 self.M = np.append(self.M, np.sum(self.S))
-                print(f"Progress: kBT = {self.kBT}   count = {count}/{t}", end='\r')
+                #print(f"Progress: kBT = {self.kBT}   count = {count}/{t}", end='\r')
       
     def run_ani(self):
         """run the simulation with an animated grid. blue corresponds to S=-1 and yellow corresponds to S=+1"""
@@ -68,15 +68,14 @@ class Ising:
 
         for i in range(self.sweep * 10):                          # Run 10 sweeps of the algorithm
             self.update()                                         # Update the lattice
-            self.apply_PBCs()                                     # Refresh ghost cells
         
         return img
 
     def glauber(self):
         """update the system using Glauber dynamics"""
         """choose random state i"""
-        i_row = random.randint(1, self.L)
-        i_col = random.randint(1, self.L)
+        i_row = random.randint(0, self.L-1)
+        i_col = random.randint(0, self.L-1)
 
         dE = self.delta_E_G(i_row, i_col)
 
@@ -86,15 +85,15 @@ class Ising:
     def kawasaki(self):
         """update the system using Kawasaki dynamics"""
         """choose random states i and j"""
-        i_row = random.randint(1, self.L)
-        i_col = random.randint(1, self.L)
-        j_row = random.randint(1, self.L)
-        j_col = random.randint(1, self.L)
+        i_row = random.randint(0, self.L-1)
+        i_col = random.randint(0, self.L-1)
+        j_row = random.randint(0, self.L-1)
+        j_col = random.randint(0, self.L-1)
 
         """continue choosing j state until it is distinct from the i state"""
         while ([i_row, i_col] == [j_row, j_col]) or (self.S[i_row, i_col] == self.S[j_row, j_col]):
-            j_row = random.randint(1, self.L)
-            j_col = random.randint(1, self.L)
+            j_row = random.randint(0, self.L-1)
+            j_col = random.randint(0, self.L-1)
 
         dE = self.delta_E_K(i_row, i_col, j_row, j_col)
 
@@ -109,8 +108,8 @@ class Ising:
         I_sum = 0                                                # Initialise sum over pairs
 
         for drow, dcol in NN:                                    # Loop over nearest neighbours 'k'
-            k_row = i_row + drow
-            k_col = i_col + dcol
+            k_row = (i_row + drow) % self.L
+            k_col = (i_col + dcol) % self.L
             I_sum -= self.S[i_row, i_col] * self.S[k_row, k_col] # Negative sign accounts for spin flip
 
         return -2 * I_sum
@@ -126,14 +125,14 @@ class Ising:
         J_sum = 0                                                    # Initialise sum over pairs
 
         for drow, dcol in NN:                                        # Loop over nearest neighbours 'k' for each state
-            k_row = i_row + drow
-            k_col = i_col + dcol
+            k_row = (i_row + drow) % self.L
+            k_col = (i_col + dcol) % self.L
 
             if [k_row, k_col] != [j_row, j_col]:                     # Energy change unaffected by contribution from neighbouring i and j states
                 I_sum += self.S[j_row, j_col] * self.S[k_row, k_col] # Swap states i and j
 
-            k_row = j_row + drow
-            k_col = j_col + dcol
+            k_row = (j_row + drow) % self.L
+            k_col = (j_col + dcol) % self.L
 
             if [k_row, k_col] != [i_row, i_col]:                     # Energy change unaffected by contribution from neighbouring i and j states
                 J_sum += self.S[i_row, i_col] * self.S[k_row, k_col] # Swap states i and j
@@ -162,7 +161,7 @@ class Ising:
 
 if __name__ == "__main__":
     #L, kBT, dynamics = int(sys.argv[1]), float(sys.argv[2]), sys.argv[3]
-    L, kBT, dynamics = 50, 2, 'G'
+    L, kBT, dynamics = 50, 2, 'K'
     I = Ising(L, kBT, dynamics)
     #I.run(10000)
     I.run_ani()
