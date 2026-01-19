@@ -1,11 +1,11 @@
 #!/bin/bash
 
-#SBATCH --job-name=modify-data
-#SBATCH --partition=long
-#SBATCH --time=24:00:00
+#SBATCH --job-name=mvp-task4
+#SBATCH --partition=short
+#SBATCH --time=12:00:00
 #SBATCH --mem=8G
 #
 #######################################
 
 
-python3 M_Trajectory.py
+python3 task4-5-6.py

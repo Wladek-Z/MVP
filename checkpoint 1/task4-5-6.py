@@ -17,10 +17,9 @@ def write_task4(filepath):
         data.append([kBT, M, X])
     
     """write thermal energy, average total magnetisation and susceptibility data to file"""
-    df = pd.DataFrame(data, columns=['kBT', '<M>', 'chi'])
-    df.to_csv(filepath, mode='a', index=False, header=False)
+    df = pd.DataFrame(data, columns=['kBT', 'M', 'chi'])
+    df.to_csv(filepath, mode='a', index=False, header=True)
 
 
 if __name__ == "__main__":
     filepath = "./task4.txt"
-    write_task4(filepath)
