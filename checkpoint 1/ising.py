@@ -10,13 +10,12 @@ class Ising:
     def __init__(self, L, kBT, dynamics='G'):
         """
                L: {int} system size
-             kBT: {real} thermal energy (J=1)
+             kBT: {float} thermal energy (J=1)
         dynamics: {str} 'G' or 'K' for Glauber/Kawasaki dynamics, respectively
         """
         self.L = L
         self.kBT = kBT
-        self.sweep = L**2                                       # Define a unique unit of time for an LxL system
-        self.count = 0                                          # Keep track of how many sweeps have passed
+        self.sweep = L * L                                       # Define a unique unit of time for an LxL system                                         # Keep track of how many sweeps have passed
         self.M = np.empty(0)                                     # Initialise empty list to track magnetisation
 
         while dynamics not in {'G', 'K'}:
@@ -38,17 +37,22 @@ class Ising:
         self.S[0:-1, -1] = self.S[0:-1, 1] # Copy first lattice column to last ghost column
 
     def run(self, t):
-        """run ten sweeps of the simulation using Glauber or Kawasaki dynamics and update the image.
+        """run the simulation for t sweeps.
             t: {int} number of sweeps for which to run the simulation"""
-        for i in range((t + 100) * self.sweep):                          
-            self.update()                                         # Update the lattice
-            self.apply_PBCs()                                     # Refresh ghost cells
-            self.count += 1                                       # Add 10 to the sweep counter
+        count = 0                                               # Keep track of how many sweeps have passed
+        for i in range(t + 100):         
 
-            if self.count <= 100:
+            for j in range(self.sweep):                         # Perform a sweep of the algorithm
+                self.update()                                   # Update the lattice
+                self.apply_PBCs()                               # Refresh ghost cells
+
+            count += 1                                          # Add 1 to the sweep counter
+
+            if count <= 100:                                    # First 100 sweeps are for equilibriation
                 continue
-            elif self.count % 10 == 0:
+            elif count % 10 == 0:                               # Take measurements every 10 sweeps
                 self.M = np.append(self.M, np.sum(self.S))
+                print(f"Progress: kBT = {self.kBT}   count = {count}/{t}", end='\r')
       
     def run_ani(self):
         """run the simulation with an animated grid. blue corresponds to S=-1 and yellow corresponds to S=+1"""
@@ -62,12 +66,10 @@ class Ising:
         plt.cla()                                                 # Clear the axis
         img = plt.imshow(self.S[1:-1, 1:-1], cmap='plasma')       # Save previous image
 
-        for i in range(self.sweep*10):                            # Run 10 sweeps of the algorithm
+        for i in range(self.sweep * 10):                          # Run 10 sweeps of the algorithm
             self.update()                                         # Update the lattice
             self.apply_PBCs()                                     # Refresh ghost cells
         
-        self.count += 10                                          # Add 10 to the sweep counter
-
         return img
 
     def glauber(self):
@@ -147,6 +149,16 @@ class Ising:
         else:
             return False
 
+    def avg_M(self):
+        """return average magnetisation and average magnetisation squared"""
+        return np.mean(self.M), np.mean(np.square(self.M))
+    
+    def susceptibility(self, M, M2):
+        """return susceptibility.
+            M: {float} expectation value of total magnetisation
+           M2: {float} expectation value of total magnetisation squared"""
+        return (M2 - M**2) / (self.L * self.L * self.kBT)
+ 
 
 if __name__ == "__main__":
     #L, kBT, dynamics = int(sys.argv[1]), float(sys.argv[2]), sys.argv[3]
