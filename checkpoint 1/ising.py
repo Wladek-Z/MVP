@@ -167,3 +167,4 @@ if __name__ == "__main__":
     I = Ising(L, kBT, dynamics)
     #I.run(10000)
     I.run_ani()
+    # testing
