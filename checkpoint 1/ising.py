@@ -41,19 +41,18 @@ class Ising:
     def run(self, t):
         """run the simulation for t sweeps.
            t: {int} number of sweeps for which to run the simulation"""
-        count = 0                                               # Keep track of how many sweeps have passed
-        for i in range(t + 100):         
+        for i in range(100):                                    # Equilibriate the system
             for j in range(self.sweep):                         # Perform a sweep of the algorithm
                 self.update()                                   # Update the lattice
-
-            count += 1                                          # Add 1 to the sweep counter
-
-            if count < 100:                                     # First 100 sweeps are for equilibriation
-                continue
-            elif count % 10 == 0:                               # Take measurements every 10 sweeps
-                self.M = np.append(self.M, np.sum(self.S))
-                #print(f"Progress: kBT = {self.kBT}   count = {count}/{t}", end='\r')
-      
+                                              
+        for i in range(1, t + 1):                               # Run the simulation for t sweeps
+            for j in range(self.sweep):                         # Perform a sweep of the algorithm
+                self.update()                                   # Update the lattice
+            
+            if i % 10 == 0:                                     # Take measurements every 10 sweeps
+                S_sum = np.sum(self.S)
+                self.M = np.append(self.M, S_sum)
+                
     def run_ani(self):
         """run the simulation with an animated grid. blue corresponds to S=-1 and yellow corresponds to S=+1"""
         fig, ax = plt.subplots()
@@ -162,9 +161,9 @@ class Ising:
  
 
 if __name__ == "__main__":
-    #L, kBT, dynamics = int(sys.argv[1]), float(sys.argv[2]), sys.argv[3]
-    L, kBT, dynamics = 50, 1.2, 'G'
+    try:
+        L, kBT, dynamics = int(sys.argv[1]), float(sys.argv[2]), sys.argv[3]
+    except:   
+        L, kBT, dynamics = 50, 1.2, 'G'
     I = Ising(L, kBT, dynamics)
-    #I.run(10000)
     I.run_ani()
-    # testing
