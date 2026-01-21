@@ -6,7 +6,7 @@ from matplotlib import pyplot as plt
 def write_task4(filepath):
     """write average magnetisation and susceptibility data to file.
        filepath: {str} file path of data file to be written"""
-    thermal_energies = np.arange(1, 3.0, 0.1)   # List of thermal energies to probe
+    thermal_energies = np.arange(1, 3, 0.1)   # List of thermal energies to probe
     
     data = []                                   # Initialise empty data array
     for kBT in thermal_energies:
