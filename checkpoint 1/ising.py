@@ -29,15 +29,7 @@ class Ising:
             self.update = self.Glauber
         else:
             self.update = self.Kawasaki
-    
-    def apply_PBCs(self):
-        """apply periodic boundary conditions after updating/generating new system.
-        Note: currently not used as PBCs are implemented using modulo arithmetic"""
-        self.S[0, 0:-1] = self.S[-2, 0:-1] # Copy last lattice row to first ghost row
-        self.S[-1, 0:-1] = self.S[1, 0:-1] # Copy first lattice row to last ghost row
-        self.S[0:-1, 0] = self.S[0:-1, -2] # Copy last lattice column to first ghost column
-        self.S[0:-1, -1] = self.S[0:-1, 1] # Copy first lattice column to last ghost column
-
+  
     def run(self, t):
         """run the simulation for t sweeps.
            t: {int} number of sweeps for which to run the simulation"""
@@ -67,8 +59,9 @@ class Ising:
         plt.title(f"Ising Model: {self.update.__name__} dynamics \n kBT = {self.kBT}, L = {self.L}")
         plt.axis('off')
 
-        for i in range(self.sweep * 10):                                      # Run 10 sweeps of the algorithm
-            self.update()                                                     # Update the lattice
+        for i in range(10):                                                   # Run 10 sweeps of the algorithm
+            for j in range(self.sweep):                                       
+                self.update()                                                 # Update the lattice
         
         return img
 
@@ -164,6 +157,6 @@ if __name__ == "__main__":
     try:
         L, kBT, dynamics = int(sys.argv[1]), float(sys.argv[2]), sys.argv[3]
     except:   
-        L, kBT, dynamics = 50, 1.2, 'G'
+        L, kBT, dynamics = 50, 1.1, 'G'
     I = Ising(L, kBT, dynamics)
     I.run_ani()

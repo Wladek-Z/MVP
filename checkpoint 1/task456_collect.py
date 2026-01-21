@@ -11,10 +11,12 @@ def write_task4(filepath):
     data = []                                         # Initialise empty data array
     for kBT in thermal_energies:                      # Loop over thermal energies
         I = Ising(50, kBT, 'G')
-        I.run(10000)                                  # Run simulation for 10000 sweeps                     
+        I.run(10000)                                  # Run simulation for 10000 sweeps    
+
         M, M2 = I.avg_M()
         chi = I.susceptibility(M, M2)
         data.append([kBT, M, chi])                    # Append data to array 
+
         print(f"kBT = {kBT}   M = {M}   chi = {chi}") # Print progress to terminal
     
     """write thermal energy, average total magnetisation and susceptibility data to file"""
@@ -23,5 +25,5 @@ def write_task4(filepath):
 
 
 if __name__ == "__main__":
-    filepath = "./task4_2.txt"
+    filepath = "./task4_3.txt"
     write_task4(filepath)
