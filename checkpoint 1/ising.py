@@ -19,6 +19,7 @@ class Ising:
         self.kBT = kBT
         self.sweep = L * L                                       # Define a unique unit of time for an LxL system                                         # Keep track of how many sweeps have passed
         self.M = np.empty(0)                                     # Initialise empty list to track magnetisation
+        self.E = np.empty(0)                                     # Initialise empty list to track energy
 
         while dynamics not in {'G', 'K'}:
             dynamics = input("Please enter 'G' or 'K' ")
@@ -33,6 +34,8 @@ class Ising:
     def run(self, t):
         """run the simulation for t sweeps.
            t: {int} number of sweeps for which to run the simulation"""
+        self.E = np.append(self.E, self.total_E())              # Record initial energy
+
         for i in range(100):                                    # Equilibriate the system
             for j in range(self.sweep):                         # Perform a sweep of the algorithm
                 self.update()                                   # Update the lattice
@@ -54,14 +57,14 @@ class Ising:
     def frame(self, t):
         """run ten sweeps of the simulation using Glauber or Kawasaki dynamics and update the image.
            t: {none} not used, required for animation"""
-        plt.cla()                                                             # Clear the axis
-        img = plt.imshow(self.S[1:-1, 1:-1], cmap='plasma', vmin=-1, vmax=1)  # Set fixed color scale
+        plt.cla()                                                                                     # Clear the axis
+        img = plt.imshow(self.S[1:-1, 1:-1], cmap='plasma', vmin=-1, vmax=1)                          # Set fixed color scale
         plt.title(f"Ising Model: {self.update.__name__} dynamics \n kBT = {self.kBT}, L = {self.L}")
         plt.axis('off')
 
-        for i in range(10):                                                   # Run 10 sweeps of the algorithm
+        for i in range(10):                                                                           # Run 10 sweeps of the algorithm
             for j in range(self.sweep):                                       
-                self.update()                                                 # Update the lattice
+                self.update()                                                                         # Update the lattice
         
         return img
 
@@ -75,6 +78,7 @@ class Ising:
 
         if self.metropolis(dE):
             self.S[i_row, i_col] *= -1
+            self.E = np.append(self.E, self.E[-1] + dE) # Append new total energy while avoiding recalculation
 
     def Kawasaki(self):
         """update the system using Kawasaki dynamics"""
@@ -93,6 +97,7 @@ class Ising:
 
         if self.metropolis(dE):
             self.S[i_row, i_col], self.S[j_row, j_col] = self.S[j_row, j_col], self.S[i_row, i_col]
+            self.E = np.append(self.E, self.E[-1] + dE) # Append new total energy while avoiding recalculation
 
     def delta_E_G(self, i_row, i_col):
         """calculate the energy change upon flipping spin state i in Glauber dynamics.
@@ -114,7 +119,7 @@ class Ising:
            i_col: {int} position of state i along second dimension
            j_row: {int} position of state j along first dimension
            j_col: {int} position of state j along second dimension"""
-        NN = [(-1, 0), (1, 0), (0, -1), (0, 1)]                      # Nearest neighbours in 2 dimensions
+        NN = [(-1, 0), (1, 0), (0, -1), (0, 1)]                      # Nearest neighbours
         I_sum = 0                                                    # Initialise sum over pairs
         J_sum = 0                                                    # Initialise sum over pairs
 
@@ -142,15 +147,57 @@ class Ising:
         else:
             return False
 
-    def avg_M(self):
-        """return average magnetisation and average magnetisation squared"""
-        return np.mean(self.M), np.mean(np.square(self.M))
+    def avg_M(self, M):
+        """return average magnetisation and average magnetisation squared.
+           M: {float} total magnetisation"""
+        return np.mean(M), np.mean(np.square(M))
     
     def susceptibility(self, M, M2):
         """return susceptibility.
             M: {float} expectation value of total magnetisation
            M2: {float} expectation value of total magnetisation squared"""
         return (M2 - M**2) / (self.L * self.L * self.kBT)
+    
+    def total_E(self):
+        """calculate the total energy of the system"""
+        E_sum = 0                                                 # Initialise energy sum
+        NN = [(-1, 0), (1, 0), (0, -1), (0, 1)]                   # Nearest neighbours
+
+        for i in range(self.L):                                   # Loop over all spins                       
+            for j in range(self.L):
+                for drow, dcol in NN:                             # Loop over nearest neighbours 'k'
+                    k_row = (i + drow) % self.L
+                    k_col = (j + dcol) % self.L
+                    E_sum += -self.S[i, j] * self.S[k_row, k_col] # Add contribution due to pair
+
+        return E_sum / 2                                          # Avoid double counting
+    
+    def avg_E(self, E):
+        """return average energy and average energy squared.
+           E: {float} total energy"""
+        return np.mean(E), np.mean(np.square(E))
+    
+    def heat_capacity(self, E, E2):
+        """return heat capacity.
+            E: {float} expectation value of total energy
+           E2: {float} expectation value of total energy squared"""
+        return (E2 - E**2) / (self.L * self.L * self.kBT * self.kBT)   # Extra unit of kB; remember to specify!
+    
+    def jackknife(self, C):
+        """compute the standard error on the heat capacity via the jackknife method.
+           C: {float} heat capacity per spin"""
+        n = len(self.E)                                                # Number of data points
+        C_i = np.empty(0)                                              # Initialise empty array for jackknife samples
+
+        for i in range(n):                                             # Loop over all data points
+            E_jack = np.delete(self.E, i)                              # Sample distribution with i-th element removed
+            E, E2 = self.avg_E(E_jack)                                 # Calculate average energy and average energy squared
+            C_jack = self.heat_capacity(E, E2)                         # Calculate heat capacity for jackknife sample
+            C_i = np.append(C_i, C_jack)                               # append heat capacity for jackknife sample
+
+        return np.sqrt(np.sum(C_i - C)**2)                             # Jackknife standard error calculation
+            
+
  
 
 if __name__ == "__main__":

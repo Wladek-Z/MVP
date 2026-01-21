@@ -12,19 +12,19 @@ def plot_task4(filepath):
     
     plt.subplot(1, 2, 1)                                 # Plot average magnetisation
     plt.plot(df['kBT'], df['M'], color='magenta')
-    plt.xlabel('Temperature [J]')
+    plt.xlabel('Thermal Energy [J]')
     plt.ylabel('Average Total Magnetisation, M')
-    plt.title('Average Magnetisation vs Temperature')
+    plt.title('Average Magnetisation vs Thermal Energy')
     
     plt.subplot(1, 2, 2)                                 # Plot susceptibility
     plt.plot(df['kBT'], df['chi'], 'o-', color='orange')
-    plt.xlabel('Temperature [J]')
+    plt.xlabel('Thermal Energy [J]')
     plt.ylabel(r'Susceptibility, $\chi$')
-    plt.title('Susceptibility vs Temperature')
+    plt.title('Susceptibility vs Thermal Energy')
     
     plt.tight_layout()
     plt.show()
 
 if __name__ == "__main__":
-    filepath = "./task4_2.txt"
+    filepath = "./task4_3.txt"
     plot_task4(filepath)
