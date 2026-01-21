@@ -112,9 +112,9 @@ class Ising:
         for drow, dcol in NN:                                    # Loop over nearest neighbours 'k'
             k_row = (i_row + drow) % self.L
             k_col = (i_col + dcol) % self.L
-            I_sum -= self.S[i_row, i_col] * self.S[k_row, k_col] # Negative sign accounts for spin flip
+            I_sum += self.S[i_row, i_col] * self.S[k_row, k_col] # Add contribution due to pair
 
-        return -2 * I_sum
+        return 2 * I_sum                                         # Shortcut energy change calculation
 
     def delta_E_K(self, i_row, i_col, j_row, j_col):
         """calculate the energy change upon switching spin states i and j in Kawasaki dynamics.
@@ -130,16 +130,16 @@ class Ising:
             k_row = (i_row + drow) % self.L
             k_col = (i_col + dcol) % self.L
 
-            if [k_row, k_col] != [j_row, j_col]:                     # Energy change unaffected by contribution from neighbouring i and j states
+            if [k_row, k_col] != [j_row, j_col]:                     # Swapping neighbouring i and j has no effect
                 I_sum += self.S[j_row, j_col] * self.S[k_row, k_col] # Swap states i and j
 
             k_row = (j_row + drow) % self.L
             k_col = (j_col + dcol) % self.L
 
-            if [k_row, k_col] != [i_row, i_col]:                     # Energy change unaffected by contribution from neighbouring i and j states
+            if [k_row, k_col] != [i_row, i_col]:                     # Swapping neighbouring i and j has no effect
                 J_sum += self.S[i_row, i_col] * self.S[k_row, k_col] # Swap states i and j
 
-        return -2 * (I_sum + J_sum)                                  # Total energy change contribution
+        return -2 * (I_sum + J_sum)                                  # Calculate total energy change
 
     def metropolis(self, dE):
         """use the Metropolis algorithm to decide whether to flip the spin state"""
