@@ -48,7 +48,7 @@ class Ising:
 
             count += 1                                          # Add 1 to the sweep counter
 
-            if count <= 100:                                    # First 100 sweeps are for equilibriation
+            if count < 100:                                    # First 100 sweeps are for equilibriation
                 continue
             elif count % 10 == 0:                               # Take measurements every 10 sweeps
                 self.M = np.append(self.M, np.sum(self.S))
