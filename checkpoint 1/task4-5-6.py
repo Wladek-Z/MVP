@@ -6,9 +6,10 @@ from matplotlib import pyplot as plt
 def write_task4(filepath):
     """write average magnetisation and susceptibility data to file.
        filepath: {str} file path of data file to be written"""
-    thermal_energies = np.arange(1, 3, 0.1)   # List of thermal energies to probe
+    thermal_energies = np.arange(1, 3, 0.1)          # List of thermal energies to probe
+    thermal_energies = np.round(thermal_energies, 1) # Round to 1 decimal place
     
-    data = []                                   # Initialise empty data array
+    data = []                                        # Initialise empty data array
     for kBT in thermal_energies:
         I = Ising(50, kBT, 'G')
         I.run(10000)
@@ -23,3 +24,4 @@ def write_task4(filepath):
 
 if __name__ == "__main__":
     filepath = "./task4.txt"
+    write_task4(filepath)

@@ -63,13 +63,13 @@ class Ising:
     def frame(self, t):
         """run ten sweeps of the simulation using Glauber or Kawasaki dynamics and update the image.
            t: {none} not used, required for animation"""
-        plt.cla()                                                 # Clear the axis
-        img = plt.imshow(self.S[1:-1, 1:-1], cmap='plasma')       # Save previous image
+        plt.cla()                                                             # Clear the axis
+        img = plt.imshow(self.S[1:-1, 1:-1], cmap='plasma', vmin=-1, vmax=1)  # Set fixed color scale
         plt.title(f"Ising Model: {self.update.__name__} dynamics \n kBT = {self.kBT}, L = {self.L}")
         plt.axis('off')
 
-        for i in range(self.sweep * 10):                          # Run 10 sweeps of the algorithm
-            self.update()                                         # Update the lattice
+        for i in range(self.sweep * 10):                                      # Run 10 sweeps of the algorithm
+            self.update()                                                     # Update the lattice
         
         return img
 
@@ -163,7 +163,7 @@ class Ising:
 
 if __name__ == "__main__":
     #L, kBT, dynamics = int(sys.argv[1]), float(sys.argv[2]), sys.argv[3]
-    L, kBT, dynamics = 50, 2, 'G'
+    L, kBT, dynamics = 50, 1, 'G'
     I = Ising(L, kBT, dynamics)
     #I.run(10000)
     I.run_ani()
