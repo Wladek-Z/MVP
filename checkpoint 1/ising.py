@@ -48,7 +48,7 @@ class Ising:
 
             count += 1                                          # Add 1 to the sweep counter
 
-            if count < 100:                                    # First 100 sweeps are for equilibriation
+            if count < 100:                                     # First 100 sweeps are for equilibriation
                 continue
             elif count % 10 == 0:                               # Take measurements every 10 sweeps
                 self.M = np.append(self.M, np.sum(self.S))
@@ -163,7 +163,7 @@ class Ising:
 
 if __name__ == "__main__":
     #L, kBT, dynamics = int(sys.argv[1]), float(sys.argv[2]), sys.argv[3]
-    L, kBT, dynamics = 50, 1, 'G'
+    L, kBT, dynamics = 50, 1.2, 'G'
     I = Ising(L, kBT, dynamics)
     #I.run(10000)
     I.run_ani()

@@ -10,12 +10,12 @@ def write_task4(filepath):
     thermal_energies = np.round(thermal_energies, 1) # Round to 1 decimal place
     
     data = []                                        # Initialise empty data array
-    for kBT in thermal_energies:
+    for kBT in thermal_energies:                     # Loop over thermal energies
         I = Ising(50, kBT, 'G')
         I.run(10000)
         M, M2 = I.avg_M()
         X = I.susceptibility(M, M2)
-        data.append([kBT, M, X])
+        data.append([kBT, M, X])                     # Append data to array 
     
     """write thermal energy, average total magnetisation and susceptibility data to file"""
     df = pd.DataFrame(data, columns=['kBT', 'M', 'chi'])
