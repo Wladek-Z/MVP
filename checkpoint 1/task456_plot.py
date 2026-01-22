@@ -1,6 +1,4 @@
-from ising import Ising
 import pandas as pd
-import numpy as np
 from matplotlib import pyplot as plt
 
 def plot_task4(filepath):
@@ -15,6 +13,8 @@ def plot_task4(filepath):
     plt.xlabel('Thermal Energy [J]')
     plt.ylabel('Average Total Magnetisation, M')
     plt.title('Average Magnetisation vs Thermal Energy')
+
+    # Note: CONSIDER UNITS
     
     plt.subplot(1, 2, 2)                                 # Plot susceptibility
     plt.plot(df['kBT'], df['chi'], 'o-', color='orange')

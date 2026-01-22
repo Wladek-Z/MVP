@@ -17,14 +17,15 @@ class Ising:
         """
         self.L = L
         self.kBT = kBT
-        self.sweep = L * L                                       # Define a unique unit of time for an LxL system                                         # Keep track of how many sweeps have passed
-        self.M = np.empty(0)                                     # Initialise empty list to track magnetisation
-        self.E = np.empty(0)                                     # Initialise empty list to track energy
+        self.sweep = L * L                                    # Define a unique unit of time for an LxL system                                         # Keep track of how many sweeps have passed
+        self.M = np.empty(0)                                  # Initialise empty list for magnetisation measurements
+        self.E = np.empty(0)                                  # Initialise empty list for energy measurements
 
         while dynamics not in {'G', 'K'}:
             dynamics = input("Please enter 'G' or 'K' ")
 
-        self.S = np.random.choice([-1, 1], size=(L, L))
+        self.S = np.random.choice([-1, 1], size=(L, L))       # Initialise random spin configuration
+        self.E_now = self.total_E()                           # Record initial energy; E_now = "what is the current energy?"
 
         if dynamics == 'G':
             self.update = self.Glauber
@@ -34,19 +35,18 @@ class Ising:
     def run(self, t):
         """run the simulation for t sweeps.
            t: {int} number of sweeps for which to run the simulation"""
-        self.E = np.append(self.E, self.total_E())              # Record initial energy
-
-        for i in range(100):                                    # Equilibriate the system
-            for j in range(self.sweep):                         # Perform a sweep of the algorithm
-                self.update()                                   # Update the lattice
+        for i in range(100):                                        # Equilibriate the system
+            for j in range(self.sweep):                             # Perform a sweep of the algorithm
+                self.update()                                       # Update the lattice
                                               
-        for i in range(1, t + 1):                               # Run the simulation for t sweeps
-            for j in range(self.sweep):                         # Perform a sweep of the algorithm
-                self.update()                                   # Update the lattice
+        for i in range(1, t + 1):                                   # Run the simulation for t sweeps
+            for j in range(self.sweep):                             # Perform a sweep of the algorithm
+                self.update()                                       # Update the lattice
             
-            if i % 10 == 0:                                     # Take measurements every 10 sweeps
-                S_sum = np.sum(self.S)
-                self.M = np.append(self.M, S_sum)
+            if i % 10 == 0:                                         # Take measurements every 10 sweeps
+                S_sum = np.sum(self.S)                              # Calculate current magnetisation                                    
+                self.M = np.append(self.M, S_sum)                   # Record current magnetisation         
+                self.E = np.append(self.E, self.E_now)              # Record current energy 
                 
     def run_ani(self):
         """run the simulation with an animated grid. blue corresponds to S=-1 and yellow corresponds to S=+1"""
@@ -78,7 +78,7 @@ class Ising:
 
         if self.metropolis(dE):
             self.S[i_row, i_col] *= -1
-            self.E = np.append(self.E, self.E[-1] + dE) # Append new total energy while avoiding recalculation
+            self.E_now = self.E_now + dE        # Update total energy while avoiding recalculation
 
     def Kawasaki(self):
         """update the system using Kawasaki dynamics"""
@@ -97,7 +97,7 @@ class Ising:
 
         if self.metropolis(dE):
             self.S[i_row, i_col], self.S[j_row, j_col] = self.S[j_row, j_col], self.S[i_row, i_col]
-            self.E = np.append(self.E, self.E[-1] + dE) # Append new total energy while avoiding recalculation
+            self.E_now = self.E_now + dE         # Update total energy while avoiding recalculation
 
     def delta_E_G(self, i_row, i_col):
         """calculate the energy change upon flipping spin state i in Glauber dynamics.
@@ -149,7 +149,7 @@ class Ising:
 
     def avg_M(self, M):
         """return average magnetisation and average magnetisation squared.
-           M: {float} total magnetisation"""
+           M: {arr} magnetisation measurements array"""
         return np.mean(M), np.mean(np.square(M))
     
     def susceptibility(self, M, M2):
@@ -174,7 +174,7 @@ class Ising:
     
     def avg_E(self, E):
         """return average energy and average energy squared.
-           E: {float} total energy"""
+           E: {arr} energy measurements array"""
         return np.mean(E), np.mean(np.square(E))
     
     def heat_capacity(self, E, E2):
@@ -207,3 +207,4 @@ if __name__ == "__main__":
         L, kBT, dynamics = 50, 1.1, 'G'
     I = Ising(L, kBT, dynamics)
     I.run_ani()
+

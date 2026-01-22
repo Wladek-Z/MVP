@@ -26,21 +26,21 @@ def write_task4(filepath):
 def write_task5(filepath, dynamics):
     """write average energy and heat capacity data to file.
        filepath: {str} file path of data file to be written"""
-    while dynamics not in {'G', 'K'}:                    # Validate user input
+    while dynamics not in {'G', 'K'}:                       # Validate user input
             dynamics = input("Please enter 'G' or 'K' ")
 
-    thermal_energies = np.arange(1, 3, 0.1)              # List of thermal energies to probe
-    thermal_energies = np.round(thermal_energies, 1)     # Round to 1 decimal place
+    thermal_energies = np.arange(1, 3, 0.1)                 # List of thermal energies to probe
+    thermal_energies = np.round(thermal_energies, 1)        # Round to 1 decimal place
     
-    data = []                                            # Initialise empty data array
-    for kBT in thermal_energies:                         # Loop over thermal energies
+    data = []                                               # Initialise empty data array
+    for kBT in thermal_energies:                            # Loop over thermal energies
         I = Ising(50, kBT, dynamics)
-        I.run(10000)                                     # Run simulation for 10000 sweeps    
+        I.run(10000)                                        # Run simulation for 10000 sweeps    
 
         E, E2 = I.avg_E(I.E)
         C = I.heat_capacity(E, E2)
         sigma = I.jackknife(C)
-        data.append([kBT, E, C, sigma])                  # Append data to array 
+        data.append([kBT, E, C, sigma])                     # Append data to array 
 
         print(f"kBT = {kBT}   E = {E}   C = {C}   sigma = {sigma}")     
     
