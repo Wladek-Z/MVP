@@ -23,9 +23,10 @@ def write_task4(filepath):
     df = pd.DataFrame(data, columns=['kBT', 'M', 'chi'])
     df.to_csv(filepath, mode='a', index=False, header=True)
 
-def write_task5(filepath, dynamics):
+def write_task56(filepath, dynamics):
     """write average energy and heat capacity data to file.
-       filepath: {str} file path of data file to be written"""
+       filepath: {str} file path of data file to be written
+       dynamics: {str} dynamics type, 'G' for Glauber, 'K' for Kawasaki"""
     while dynamics not in {'G', 'K'}:                       # Validate user input
             dynamics = input("Please enter 'G' or 'K' ")
 
@@ -50,5 +51,5 @@ def write_task5(filepath, dynamics):
 
 
 if __name__ == "__main__":
-    filepath = "./task5_1.txt"
-    write_task5(filepath, 'G')
+    filepath = "./task6_1.txt"
+    write_task56(filepath, 'K')

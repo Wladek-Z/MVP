@@ -195,7 +195,7 @@ class Ising:
             C_jack = self.heat_capacity(E, E2)                         # Calculate heat capacity for jackknife sample
             C_i = np.append(C_i, C_jack)                               # append heat capacity for jackknife sample
 
-        return np.sqrt(np.sum(C_i - C)**2)                             # Jackknife standard error calculation
+        return np.sqrt(np.sum((C_i - C)**2))                           # Jackknife standard error calculation
             
 
  
