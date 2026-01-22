@@ -150,7 +150,7 @@ class Ising:
     def avg_M(self, M):
         """return average magnetisation and average magnetisation squared.
            M: {arr} magnetisation measurements array"""
-        return np.mean(M), np.mean(np.square(M))
+        return np.mean(np.abs(M)), np.mean(np.square(M))
     
     def susceptibility(self, M, M2):
         """return susceptibility.

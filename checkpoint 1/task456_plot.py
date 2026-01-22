@@ -51,5 +51,5 @@ def plot_task56(filepath):
     plt.show()
 
 if __name__ == "__main__":
-    filepath = "./task5_1.txt"
-    plot_task56(filepath)
+    filepath = "./task4.txt"
+    plot_task4(filepath)
