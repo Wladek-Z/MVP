@@ -9,15 +9,22 @@ def write_task4(filepath):
     thermal_energies = np.round(thermal_energies, 1)  # Round to 1 decimal place
     
     data = []                                         # Initialise empty data array
+    I = Ising(50, None, 'G')                          # Initialise Ising model class instance 
+
     for kBT in thermal_energies:                      # Loop over thermal energies
-        I = Ising(50, kBT, 'G')
+        """reuse Ising instance to retain spin lattice between runs"""
+        I.kBT = kBT                                   # Set thermal energy
+
+        I.E = np.empty(0)                             # Reset energy and magnetisation arrays
+        I.M = np.empty(0)
+
         I.run(10000)                                  # Run simulation for 10000 sweeps    
 
-        M, M2 = I.avg_M(I.M)
-        chi = I.susceptibility(M, M2)
+        M, M2 = I.avg_M(I.M)                          # Calculate average magnetisation, magnetisation squared
+        chi = I.susceptibility(M, M2)                 # Calculate susceptibility
         data.append([kBT, M, chi])                    # Append data to array 
 
-        print(f"kBT = {kBT}   M = {M}   chi = {chi}")
+        print(f"kBT = {kBT}   M = {M}   chi = {chi}") 
     
     """write thermal energy, average total magnetisation and susceptibility data to file"""
     df = pd.DataFrame(data, columns=['kBT', 'M', 'chi'])
