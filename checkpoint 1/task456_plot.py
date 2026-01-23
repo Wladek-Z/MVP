@@ -4,7 +4,7 @@ from matplotlib import pyplot as plt
 def plot_task4(filepath):
     """plot average magnetisation and susceptibility data from file.
        filepath: {str} file path of data file to be plotted"""
-    df = pd.read_csv(filepath)                           # Read data from file
+    df = pd.read_csv(filepath)[1:]                       # Read data from file
     
     plt.figure(figsize=(8, 8))                           # Initialise figure
     
@@ -31,7 +31,7 @@ def plot_task56(filepath):
     else:
         dynamics = 'Kawasaki'
 
-    df = pd.read_csv(filepath)                           # Read data from file
+    df = pd.read_csv(filepath)[1:]                       # Read data from file
     
     plt.figure(figsize=(8, 8))                           # Initialise figure
     
@@ -51,5 +51,6 @@ def plot_task56(filepath):
     plt.show()
 
 if __name__ == "__main__":
-    filepath = "./task4.txt"
-    plot_task4(filepath)
+    filepath = "./task6.txt"
+    plot_task56(filepath)
+    # ask tyler if i can remove first data point

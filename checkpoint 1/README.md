@@ -5,7 +5,7 @@ Ising.py contains the Ising class, which can run simulations of the Ising model.
 ## Usage
 
 ```bash
-$ python ising.py 50 2 'G'
+$ python ising.py 50 1.6 'G'
 ```
 
 ```bash
@@ -20,5 +20,10 @@ $ python ising.py
 
 ```python
 filepath = 'path/to/file.txt'
-task4_collect.py(filepath)
+collect_task4.py(filepath)
+```
+
+```python
+filepath = 'path/to/file.txt'
+collect_task56.py(filepath, 'K')
 ```
