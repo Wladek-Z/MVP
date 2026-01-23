@@ -23,13 +23,15 @@ task456_collect.py runs iterations of the Ising model simulation using varying t
 To execute the data collection procedure, enter the filepath you wish to save the data to and call the function corresponding to the relevant task number, collect_task4(filepath) or collect_task56(filepath, dynamics). For the latter, the user must specify the type of dynamics to probe as an argument; 'G' or 'K' for Glauber or Kawasaki dynamics, respectively.
 
 ```python
-filepath = 'path/to/file.txt'
-collect_task4(filepath)
+if __name__ == '__main__':
+    filepath = 'path/to/file.txt'
+    collect_task4(filepath)
 ```
 
 ```python
-filepath = 'path/to/file.txt'
-collect_task56(filepath, 'K')
+if __name__ == '__main__':
+    filepath = 'path/to/file.txt'
+    collect_task56(filepath, 'K')
 ```
 
 # task456_plot.py
@@ -41,13 +43,15 @@ task456_plot.py reads data from a file to produce two graphs. The data in each f
 To plot each pair of graphs, enter the filepath you wish to read the data from and call the function corresponding to the relevant task number, plot_task4(filepath) or plot_task56(filepath, dynamics). The function for plotting the task 5 and 6 data automatically determines which type of dynamics the given data file corresponds to by checking the filepath string and adjusts the graph titles accordingly. The title will specify Glauber or Kawasaki dynamics depending on if the filepath string contains the substring 'task4' or 'task5', respectively. Alternatively, if the filepath contains neither substring the title will specify that the dynamics are unknown, however the user has the option to specify the dynamics type manually by adding an additional positional argument 'G' or 'K' to the function call for Glauber or Kawasaki dynamics, respectively.
 
 ```python
-# set filepath to magnetisation/susceptibility data file
-filepath = 'path/to/file_task4.txt'
-plot_task4(filepath)
+if __name__ == '__main__':
+    # set filepath to magnetisation/susceptibility data file
+    filepath = 'path/to/file_task4.txt'
+    plot_task4(filepath)
 ```
 
 ```python
-# set filepath to energy/heat capacity data file
-filepath = 'path/to/file.txt'
-plot_task56(filepath, 'G')
+if __name__ == '__main__':
+    # set filepath to energy/heat capacity data file
+    filepath = 'path/to/file.txt'
+    plot_task56(filepath, 'G')
 ```

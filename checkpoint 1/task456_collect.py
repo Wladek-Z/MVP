@@ -22,9 +22,9 @@ def collect_task4(filepath):
 
         M, M2 = I.avg_M(I.M)                          # Calculate average magnetisation, magnetisation squared
         chi = I.susceptibility(M, M2)                 # Calculate susceptibility
-        data.append([kBT, M, chi])                    # Append data to array 
+        data.append([kBT, np.abs(M), chi])            # Append data to array 
 
-        print(f"kBT = {kBT}   M = {M}   chi = {chi}") 
+        print(f"kBT = {kBT}   M = {np.abs(M)}   chi = {chi}") 
     
     """write thermal energy, average total magnetisation and susceptibility data to file"""
     df = pd.DataFrame(data, columns=['kBT', 'M', 'chi'])
@@ -67,3 +67,7 @@ def collect_task56(filepath, dynamics):
 if __name__ == "__main__":
     filepath = "./task6_1.txt"
     collect_task56(filepath, 'K')
+    filepath = "./task5_1.txt"
+    collect_task56(filepath, 'G')
+    filepath = "./task4_1.txt"
+    collect_task4(filepath)
