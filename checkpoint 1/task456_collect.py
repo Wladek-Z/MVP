@@ -5,13 +5,13 @@ import numpy as np
 def collect_task4(filepath):
     """compute and write average magnetisation and susceptibility data to file.
        filepath: {str} file path of data file to be written"""
-    thermal_energies = np.arange(1, 3, 0.1)           # List of thermal energies to probe
+    thermal_energies = np.arange(3, 0.9, -0.1)        # List of thermal energies to probe
     thermal_energies = np.round(thermal_energies, 1)  # Round to 1 decimal place
     
     data = []                                         # Initialise empty data array
     I = Ising(50, None, 'G')                          # Initialise Ising model class instance 
 
-    for kBT in thermal_energies:                      # Loop over thermal energies
+    for kBT in thermal_energies:                      # Loop over thermal energies, starting from hot state
         """reuse Ising instance to retain spin lattice between runs"""
         I.kBT = kBT                                   # Set thermal energy
 
@@ -37,7 +37,7 @@ def collect_task56(filepath, dynamics):
     while dynamics not in {'G', 'K'}:                       # Validate user input
             dynamics = input("Please enter 'G' or 'K' ")
 
-    thermal_energies = np.arange(1, 3, 0.1)                 # List of thermal energies to probe
+    thermal_energies = np.arange(3, 0.9, -0.1)              # List of thermal energies to probe
     thermal_energies = np.round(thermal_energies, 1)        # Round to 1 decimal place
     
     data = []                                               # Initialise empty data array
@@ -65,5 +65,5 @@ def collect_task56(filepath, dynamics):
 
 
 if __name__ == "__main__":
-    filepath = "./task6.txt"
+    filepath = "./task6_1.txt"
     collect_task56(filepath, 'K')

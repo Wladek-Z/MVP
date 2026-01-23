@@ -204,7 +204,7 @@ if __name__ == "__main__":
     try:
         L, kBT, dynamics = int(sys.argv[1]), float(sys.argv[2]), sys.argv[3]
     except:   
-        L, kBT, dynamics = 50, 2, 'G'
+        L, kBT, dynamics = 50, 1.1, 'G'
     I = Ising(L, kBT, dynamics)
     I.run_ani()
 
