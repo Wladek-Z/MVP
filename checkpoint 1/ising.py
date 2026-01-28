@@ -181,11 +181,11 @@ class Ising:
         """return heat capacity.
             E: {float} expectation value of total energy
            E2: {float} expectation value of total energy squared"""
-        return (E2 - E**2) / (self.L * self.L * self.kBT * self.kBT)   # Extra unit of kB; remember to specify!
+        return (E2 - E**2) / (self.L * self.L * self.kBT * self.kBT)   
     
     def jackknife(self, C):
         """compute the standard error on the heat capacity via the jackknife method.
-           C: {float} heat capacity per spin"""
+           C: {float} measured heat capacity per spin"""
         n = len(self.E)                                                # Number of data points
         C_i = np.empty(0)                                              # Initialise empty array for jackknife samples
 

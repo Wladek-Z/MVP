@@ -3,7 +3,7 @@ from matplotlib import pyplot as plt
 
 def plot_task4(filepath):
     """plot average magnetisation and susceptibility data from file.
-       filepath: {str} file path of data file to be plotted"""
+       filepath: {str} file path of data file to be plotted. Must be task 4 data"""
     df = pd.read_csv(filepath)                           # Read data from file
     
     plt.figure(figsize=(8, 8))                           # Initialise figure
@@ -16,7 +16,7 @@ def plot_task4(filepath):
 
     plt.subplot(2, 1, 2)                                 # Plot susceptibility
     plt.plot(df['kBT'], df['chi'], 'o-', color='orangered')
-    plt.xlabel(r'Thermal Energy, $k_B T$, J=1')
+    plt.xlabel(r'Thermal Energy, $k_B T$ [$J$]')
     plt.ylabel(r'Susceptibility, $\chi$')
     plt.title('Susceptibility vs Thermal Energy (Glauber Dynamics)')
     
@@ -25,7 +25,7 @@ def plot_task4(filepath):
 
 def plot_task56(filepath, dynamics='Unknown'):
     """plot average magnetisation and susceptibility data from file.
-       filepath: {str} file path of data file to be plotted"""
+       filepath: {str} file path of data file to be plotted. Must be task 5 or 6 data"""
     if "task5" in filepath:                              # Determine dynamics type from filename
         dynamics = 'Glauber'
     elif "task6" in filepath:
@@ -37,14 +37,14 @@ def plot_task56(filepath, dynamics='Unknown'):
     
     plt.subplot(2, 1, 1)                                 # Plot average magnetisation
     plt.plot(df['kBT'], df['E'], 'o-', color='forestgreen')
-    plt.xlabel(r'Thermal Energy, $k_B T$, J=1')
-    plt.ylabel(r'Average Energy, $\langle E \rangle$')
+    plt.xlabel(r'Thermal Energy, $k_B T$ [$J$]')
+    plt.ylabel(r'Average Energy, $\langle E \rangle$ [$J$]')
     plt.title(f'Average Energy vs Thermal Energy ({dynamics} Dynamics)')
 
     plt.subplot(2, 1, 2)                                 # Plot heat capacity
     plt.plot(df['kBT'], df['C'], '-', color='teal')
     plt.errorbar(df['kBT'], df['C'], yerr=df['sigma'], fmt='o', color='teal', capsize=4, ecolor='red')
-    plt.xlabel(r'Thermal Energy, $k_B T$, J=1')
+    plt.xlabel(r'Thermal Energy, $k_B T$ [$J$]')
     plt.ylabel(r'Heat Capacity, $C$ [$k_B$]')
     plt.title(f'Heat Capacity vs Thermal Energy ({dynamics} Dynamics)')
     
