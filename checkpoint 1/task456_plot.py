@@ -10,7 +10,7 @@ def plot_task4(filepath):
     
     plt.subplot(2, 1, 1)                                 # Plot average magnetisation
     plt.plot(df['kBT'], df['M'], 'o-', color='blueviolet')
-    plt.xlabel(r'Thermal Energy, $k_B T$, J=1')
+    plt.xlabel(r'Thermal Energy, $k_B T$ [$J$]')
     plt.ylabel(r'Average Magnetisation, $\langle |M| \rangle$')
     plt.title('Average Magnetisation vs Thermal Energy (Glauber Dynamics)')
 
@@ -42,8 +42,8 @@ def plot_task56(filepath, dynamics='Unknown'):
     plt.title(f'Average Energy vs Thermal Energy ({dynamics} Dynamics)')
 
     plt.subplot(2, 1, 2)                                 # Plot heat capacity
-    plt.plot(df['kBT'], df['C'], '-', color='teal')
-    plt.errorbar(df['kBT'], df['C'], yerr=df['sigma'], fmt='o', color='teal', capsize=4, ecolor='red')
+    plt.plot(df['kBT'], df['C'], '-', color='deepskyblue')
+    plt.errorbar(df['kBT'], df['C'], yerr=df['sigma'], fmt='.', color='deepskyblue', capsize=5, ecolor='crimson')
     plt.xlabel(r'Thermal Energy, $k_B T$ [$J$]')
     plt.ylabel(r'Heat Capacity, $C$ [$k_B$]')
     plt.title(f'Heat Capacity vs Thermal Energy ({dynamics} Dynamics)')
@@ -52,5 +52,5 @@ def plot_task56(filepath, dynamics='Unknown'):
     plt.show()
 
 if __name__ == "__main__":
-    filepath = "./task4.txt"
-    plot_task4(filepath)
+    filepath = "./task6.txt"
+    plot_task56(filepath)
