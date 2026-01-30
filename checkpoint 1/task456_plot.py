@@ -11,7 +11,7 @@ def plot_task4(filepath):
     plt.subplot(2, 1, 1)                                 # Plot average magnetisation
     plt.plot(df['kBT'], df['M'], 'o-', color='blueviolet')
     plt.xlabel(r'Thermal Energy, $k_B T$ [$J$]')
-    plt.ylabel(r'Average Magnetisation, $\langle |M| \rangle$')
+    plt.ylabel(r'Average Magnetisation, $|\langle M \rangle|$')
     plt.title('Average Magnetisation vs Thermal Energy (Glauber Dynamics)')
 
     plt.subplot(2, 1, 2)                                 # Plot susceptibility
@@ -52,5 +52,5 @@ def plot_task56(filepath, dynamics='Unknown'):
     plt.show()
 
 if __name__ == "__main__":
-    filepath = "./task6.txt"
-    plot_task56(filepath)
+    filepath = "./task4.txt"
+    plot_task4(filepath)
