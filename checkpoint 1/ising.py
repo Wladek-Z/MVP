@@ -3,6 +3,7 @@ import random
 from matplotlib import pyplot as plt
 from matplotlib.animation import FuncAnimation
 import sys
+import argparse
 
 class Ising:
     """Class to represent a 2D Ising model"""
@@ -201,10 +202,12 @@ class Ising:
  
 
 if __name__ == "__main__":
-    try:
-        L, kBT, dynamics = int(sys.argv[1]), float(sys.argv[2]), sys.argv[3]
-    except:   
-        L, kBT, dynamics = 50, 1.1, 'G'
-    I = Ising(L, kBT, dynamics)
-    I.run_ani()
+    """Parse command line arguments"""
+    parser = argparse.ArgumentParser()
+    parser.add_argument('-L', '--size', type=int, default=50, help='System size (default: 50)')
+    parser.add_argument('-T', '--temperature', type=float, default=2, help='Thermal energy (default: 2)')
+    parser.add_argument('-d', '--dynamics', type=str, choices=['G', 'K'], default='G', help="Dynamics type: 'G' for Glauber, 'K' for Kawasaki (default: 'G')")
+    args = parser.parse_args()
+    I = Ising(args.size, args.temperature, args.dynamics)
+    I.run_ani()         # Run the simulation with an animated grid
 
