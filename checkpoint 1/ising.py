@@ -78,7 +78,7 @@ class Ising:
 
         if self.metropolis(dE):
             self.S[i_row, i_col] *= -1
-            self.E_now = self.E_now + dE        # Update total energy while avoiding recalculation
+            self.E_now = self.E_now + dE        # Update total energy whilst avoiding total recalculation
 
     def Kawasaki(self):
         """update the system using Kawasaki dynamics"""

@@ -65,5 +65,5 @@ def collect_task56(filepath, dynamics):
 
 
 if __name__ == "__main__":
-    filepath = "./task6.txt"
-    collect_task56(filepath, 'K')
+    filepath = "./task4_1.txt"
+    collect_task4(filepath)

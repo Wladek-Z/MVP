@@ -52,5 +52,5 @@ def plot_task56(filepath, dynamics='Unknown'):
     plt.show()
 
 if __name__ == "__main__":
-    filepath = "./task4.txt"
-    plot_task4(filepath)
+    filepath = "./task5.txt"
+    plot_task56(filepath)
