@@ -128,13 +128,13 @@ class Ising:
             k_col = (i_col + dcol) % self.L
 
             if [k_row, k_col] != [j_row, j_col]:                     # Swapping neighbouring i and j has no effect
-                I_sum += self.S[j_row, j_col] * self.S[k_row, k_col] # Swap states i and j
+                I_sum += self.S[j_row, j_col] * self.S[k_row, k_col] # Compute contribution due to pair
 
             k_row = (j_row + drow) % self.L
             k_col = (j_col + dcol) % self.L
 
             if [k_row, k_col] != [i_row, i_col]:                     # Swapping neighbouring i and j has no effect
-                J_sum += self.S[i_row, i_col] * self.S[k_row, k_col] # Swap states i and j
+                J_sum += self.S[i_row, i_col] * self.S[k_row, k_col] # Compute contribution due to pair
 
         return -2 * (I_sum + J_sum)                                  # Calculate total energy change
 
