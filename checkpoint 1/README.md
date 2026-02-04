@@ -1,10 +1,27 @@
 # ising.py
 
-Ising.py contains the Ising class, which runs simulations of the 2D Ising model. Running Ising.py displays an animation of the time evolution of a specified Ising model system, indefinitely.
+Ising.py contains the Ising class, which runs simulations of the 2D Ising model (with J = 1). Running Ising.py displays an animation of the time evolution of a specified Ising model system, indefinitely. 
+
+## Arguments
+
+-L: --size
+    {integer}
+    System size
+    Default = 50
+
+-T: --temperature
+    {float}
+    Thermal energy (kBT) of the system
+    Default = 2.0
+
+-d: --dynamics
+    {string}, choice = {'G', 'K'}
+    Dynamics method, either Glauber ('G') or Kawasaki ('K')
+    Default = "G"
 
 ## Usage
 
-The program can be executed through the cmd terminal, and parses 3 positional arguments: system size (L={int}), thermal energy/temperature (T={float}), dynamics method (d={str}). To specify dynamics, the user must choose {'G', 'K'} for Glauber or Kawasaki dynamics, respectively. If the user does not provide each or any argument, the program will default to L=50, T=2.0, d='G'. 
+The program can be executed through the cmd terminal.
 
 ```bash
 $ python ising.py -L 50 -T 1.6 -d 'G'
