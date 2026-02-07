@@ -58,7 +58,7 @@ class Ising:
         """run ten sweeps of the simulation using Glauber or Kawasaki dynamics and update the image.
            t: {none} not used, required for animation"""
         plt.cla()                                                                                     # Clear the axis
-        img = plt.imshow(self.S[1:-1, 1:-1], cmap='plasma', vmin=-1, vmax=1)                          # Set fixed color scale
+        img = plt.imshow(self.S, cmap='plasma', vmin=-1, vmax=1)                          # Set fixed color scale
         plt.title(f"Ising Model: {self.update.__name__} dynamics \n kBT = {self.kBT}, L = {self.L}")
         plt.axis('off')
 
