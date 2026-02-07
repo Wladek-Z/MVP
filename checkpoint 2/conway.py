@@ -19,6 +19,8 @@ class GoL:
         while init not in {'random', 'blinker', 'glider'}:
             init = input("Please choose from {'random', 'blinker', 'glider'}: ")
 
+        self.init = init
+
         # Setup initial state of game board
         if init == 'random':
             self.board = np.random.choice([0, 1], size=(L, L))
@@ -43,4 +45,16 @@ class GoL:
         """
         Update the game board.
         """
+        # Clear the figure
         plt.cla()
+        # Set figure to previous configuration
+        img = plt.imshow(self.board, cmap='magma', vmin=0, vmax=1)   
+        # Add title and remove axes
+        plt.title(f"Game of Life: {self.init}")
+        plt.axis('off')
+        # Create copy of game board
+        old = self.board.copy()
+        # Update the game board           
+        self.apply_rules(old) 
+        
+        return img
