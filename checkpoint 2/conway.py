@@ -1,8 +1,9 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.animation import FuncAnimation
+import argparse
 
-class GoL:
+class GameOfLife:
     """Class for simulating Conway's Game of Life on a 2D lattice"""
 
     def __init__(self, L, init):
@@ -26,35 +27,89 @@ class GoL:
             self.board = np.random.choice([0, 1], size=(L, L))
         elif init == 'blinker':
             blinker = np.array([[0,0,0],[1,1,1],[0,0,0]])
-            self.board = np.zeros(L, L)
-            self.board[(L // 2 - 1):(L // 2 + 1), (L // 2 - 1):(L // 2 + 1)] = blinker
+            self.board = np.zeros((L, L))
+            self.board[(L // 2 - 1):(L // 2 + 2), (L // 2 - 1):(L // 2 + 2)] = blinker
         else:
             glider = np.array([[0,0,1],[1,0,1],[0,1,1]])
-            self.board = np.zeros(L, L)
-            self.board[(L // 2 - 1):(L // 2 + 1), (L // 2 - 1):(L // 2 + 1)] = glider
+            self.board = np.zeros((L, L))
+            self.board[(L // 2 - 1):(L // 2 + 2), (L // 2 - 1):(L // 2 + 2)] = glider
 
-    def run_ani(self):
+    def play(self):
         """
         Run the Game of Life with an animation.
         """
         fig, ax = plt.subplots()
-        ani = FuncAnimation(fig, self.update, cache_frame_data=False)
+        ani = FuncAnimation(fig, self.update, cache_frame_data=False, interval=100)
         plt.show()
 
-    def update(self):
+    def update(self, frame):
         """
         Update the game board.
+
+        Arguments:
+            frame: required for FuncAnimation to work properly (not used)
+
+        Returns:
+            img: figure displaying the (old) game board grid
         """
         # Clear the figure
         plt.cla()
         # Set figure to previous configuration
-        img = plt.imshow(self.board, cmap='magma', vmin=0, vmax=1)   
+        img = plt.imshow(self.board, cmap='magma_r', vmin=0, vmax=1)   
         # Add title and remove axes
         plt.title(f"Game of Life: {self.init}")
         plt.axis('off')
         # Create copy of game board
         old = self.board.copy()
         # Update the game board           
-        self.apply_rules(old) 
+        self.board = self.new_board(old) 
         
         return img
+    
+    def new_board(self, old):
+        """
+        Generate the new game board by applying Conway's GoL rules.
+        
+        Arguments:
+            old: LxL array containing the old game board
+        
+        Returns:
+            new: LxL array containing the new game board
+        """
+        # Compute number of alive neighbours for each cell
+        N = self.count_neighbours(old)
+        # Initialise new game board as fully dead
+        new = np.zeros_like(old)
+        # Apply rules to flip dead cells to alive
+        new = (((old == 1) & ((N == 2) | (N == 3))) | ((old == 0) & (N == 3)))
+        
+        return new.astype(int)
+    
+    def count_neighbours(self, Z):
+        """
+        Find the sum of neighbours around each cell in a given 2D array.
+        
+        Arguments:
+            Z: LxL array containing 1s and 0s
+
+        Returns:
+            N: LxL array containing the sum of neighbouring cells for each cell in Z
+        """
+        N = (np.roll(Z, 1, axis=0) + np.roll(Z, -1, axis=0)      \
+                + np.roll(Z, 1, axis=1) + np.roll(Z, -1, axis=1) \
+                + np.roll(np.roll(Z, 1, axis=0), 1, axis=1)      \
+                + np.roll(np.roll(Z, 1, axis=0), -1, axis=1)     \
+                + np.roll(np.roll(Z, -1, axis=0), 1, axis=1)     \
+                + np.roll(np.roll(Z, -1, axis=0), -1, axis=1))
+
+        return N
+
+if __name__ == "__main__":
+    # Parse command line arguments
+    
+    parser = argparse.ArgumentParser()
+    parser.add_argument('-L', '--size', type=int, default=50, help='System size (default: 50)')
+    parser.add_argument('-i', '--initialstate', type=str, choices=['random', 'blinker', 'glider'], default='random', help="Initial state of the game board (default: 'random')")
+    args = parser.parse_args()
+    GoL = GameOfLife(args.size, args.initialstate)
+    GoL.play()
