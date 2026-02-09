@@ -79,21 +79,23 @@ class GameOfLife:
         # Compute number of alive neighbours for each cell
         up = np.roll(old, 1, axis=0)
         down = np.roll(old, -1, axis=0)
-        N = (up + down                        \
-                + np.roll(old, 1, axis=1)     \
-                + np.roll(old, -1, axis=1)    \
-                + np.roll(up, 1, axis=1)      \
-                + np.roll(up, -1, axis=1)     \
-                + np.roll(down, 1, axis=1)    \
-                + np.roll(down, -1, axis=1))
+
+        N = (up 
+             + down                        
+             + np.roll(old, 1, axis=1)     
+             + np.roll(old, -1, axis=1)    
+             + np.roll(up, 1, axis=1)      
+             + np.roll(up, -1, axis=1)     
+             + np.roll(down, 1, axis=1)    
+             + np.roll(down, -1, axis=1)
+            )
         # Apply rules to flip dead cells to alive and make new game board
-        new = (((old == 1) & ((N == 2) | (N == 3))) | ((old == 0) & (N == 3)))
-        # Turn True/False array into array of 1s and 0s
+        new = ((old == 1) & ((N == 2))) | (N == 3)
+        # Convert True/False array into array of 1s and 0s
         return new.astype(int)
 
 if __name__ == "__main__":
     # Parse command line arguments
-    
     parser = argparse.ArgumentParser()
     parser.add_argument('-L', '--size', type=int, default=50, help='System size (default: 50)')
     parser.add_argument('-i', '--initialstate', type=str, choices=['random', 'blinker', 'glider'], default='random', help="Initial state of the game board (default: 'random')")
