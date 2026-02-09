@@ -77,32 +77,19 @@ class GameOfLife:
             new: LxL array containing the new game board
         """
         # Compute number of alive neighbours for each cell
-        N = self.count_neighbours(old)
-        # Initialise new game board as fully dead
-        new = np.zeros_like(old)
-        # Apply rules to flip dead cells to alive
+        up = np.roll(old, 1, axis=0)
+        down = np.roll(old, -1, axis=0)
+        N = (up + down                        \
+                + np.roll(old, 1, axis=1)     \
+                + np.roll(old, -1, axis=1)    \
+                + np.roll(up, 1, axis=1)      \
+                + np.roll(up, -1, axis=1)     \
+                + np.roll(down, 1, axis=1)    \
+                + np.roll(down, -1, axis=1))
+        # Apply rules to flip dead cells to alive and make new game board
         new = (((old == 1) & ((N == 2) | (N == 3))) | ((old == 0) & (N == 3)))
-        
+        # Turn True/False array into array of 1s and 0s
         return new.astype(int)
-    
-    def count_neighbours(self, Z):
-        """
-        Find the sum of neighbours around each cell in a given 2D array.
-        
-        Arguments:
-            Z: LxL array containing 1s and 0s
-
-        Returns:
-            N: LxL array containing the sum of neighbouring cells for each cell in Z
-        """
-        N = (np.roll(Z, 1, axis=0) + np.roll(Z, -1, axis=0)      \
-                + np.roll(Z, 1, axis=1) + np.roll(Z, -1, axis=1) \
-                + np.roll(np.roll(Z, 1, axis=0), 1, axis=1)      \
-                + np.roll(np.roll(Z, 1, axis=0), -1, axis=1)     \
-                + np.roll(np.roll(Z, -1, axis=0), 1, axis=1)     \
-                + np.roll(np.roll(Z, -1, axis=0), -1, axis=1))
-
-        return N
 
 if __name__ == "__main__":
     # Parse command line arguments
