@@ -2,6 +2,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.animation import FuncAnimation
 import argparse
+import pandas as pd
 
 class GameOfLife:
     """Class for simulating Conway's Game of Life on a 2D lattice"""
@@ -27,6 +28,9 @@ class GameOfLife:
         # Collect equilibration time data
         elif (n > 0) and f:
             self.run = self.equilibrate
+        # Plot the histogram of equilibration times
+        elif (n == 0) and (self.init != 'glider') and f:
+            self.run = self.histogram
         # Run the GoL with an animation
         else:
             self.run = self.animate
@@ -62,6 +66,8 @@ class GameOfLife:
         with open(self.filename, 'a') as f:
             # Repeat for n simulations
             for i in range(self.n):
+                # Print progress to terminal
+                print(f"Simulation {i+1}/{self.n}", end='\r')
                 # Setup initial state of the game board as random
                 self.board = np.random.choice([0, 1], size=(self.L, self.L))
                 # Initialise array to monitor the number of active sites over the 'equ' most recent timesteps
@@ -72,7 +78,8 @@ class GameOfLife:
                 # Record initial state of game board
                 active_sites[t % equ] = np.sum(self.board)
                 # Run the GoL until it equilibrates and record the time taken
-                while True:
+                # Max iterations set to 20009 to avoid infinite loop
+                while t < 20009:
                     # Increment counter
                     t += 1
                     # Create copy of game board
@@ -86,7 +93,7 @@ class GameOfLife:
                     if len(set(active_sites)) == 1:
                         break
                 # Write the number of timesteps elapsed to file
-                f.write(f"{t}\n")
+                f.write(f"{t-9}\n")
 
     def update(self, _):
         """
@@ -113,10 +120,26 @@ class GameOfLife:
         """
         Run the simulation and record the position of the centre of mass of a single glider over time.
         """
+        # Initialise the game board with a glider
         glider = np.array([[0,0,1],[1,0,1],[0,1,1]])
         self.board = np.zeros((self.L, self.L))
         self.board[(self.L // 2 - 1):(self.L // 2 + 2), (self.L // 2 - 1):(self.L // 2 + 2)] = glider
-
+        # Open file to write data
+        with open(self.filename, 'a') as f:
+            f.write("t,x,y\n")
+            # Repeat for 999 timesteps
+            for i in range(1, 1000):
+                # Update the game board
+                old = self.board.copy()
+                self.board = self.new_board(old)
+                # Discard data when glider near boundary
+                if 1 in set(np.array([self.board[:,0], self.board[:,-1], self.board[0,:], self.board[-1,:]]).flatten()):
+                    continue
+                # Calculate centre of mass
+                one_positions = np.where(self.board == 1)
+                com_x, com_y = np.mean(one_positions[0]), np.mean(one_positions[1])
+                # Write centre of mass to file
+                f.write(f"{i},{com_x},{com_y}\n")
     
     def new_board(self, old):
         """
@@ -145,6 +168,18 @@ class GameOfLife:
         new = (N == 3) | ((old == 1) & ((N == 2)))
         # Convert True/False array into array of 1s and 0s
         return new.astype(int)
+    
+    def histogram(self):
+        """
+        Plot a histogram of equilibration times from data in file.
+        """
+        # Read equilibration time data from file
+        data = pd.read_csv("equilibrate.txt", header=None)
+        # Plot histogram of equilibration times
+        plt.hist(data, bins=60, color='orangered', range=[0, 5000])
+        plt.xlabel("Equilibration Timesteps")
+        plt.ylabel("Occurrences")
+        plt.show()
 
 if __name__ == "__main__":
     # Parse command line arguments
@@ -155,5 +190,5 @@ if __name__ == "__main__":
     parser.add_argument('-f', '--filename', type=str, default=None, help="Filename for reading/writing data, if applicable (default: None)")
     args = parser.parse_args()
 
-    #GoL = GameOfLife(args.size, args.initialstate, args.numbersimulations, args.filename)
-    #GoL.run()
+    GoL = GameOfLife(args.size, args.initialstate, args.numbersimulations, args.filename)
+    GoL.run()
