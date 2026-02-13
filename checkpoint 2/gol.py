@@ -28,9 +28,6 @@ class GameOfLife:
         # Collect equilibration time data
         elif (n > 0) and f:
             self.run = self.equilibrate
-        # Plot the histogram of equilibration times
-        elif (n == 0) and (self.init != 'glider') and f:
-            self.run = self.histogram
         # Run the GoL with an animation
         else:
             self.run = self.animate
@@ -128,7 +125,7 @@ class GameOfLife:
         with open(self.filename, 'a') as f:
             f.write("t,x,y\n")
             # Repeat for 999 timesteps
-            for i in range(1, 1000):
+            for i in range(1, 10000):
                 # Update the game board
                 old = self.board.copy()
                 self.board = self.new_board(old)
@@ -168,18 +165,7 @@ class GameOfLife:
         new = (N == 3) | ((old == 1) & ((N == 2)))
         # Convert True/False array into array of 1s and 0s
         return new.astype(int)
-    
-    def histogram(self):
-        """
-        Plot a histogram of equilibration times from data in file.
-        """
-        # Read equilibration time data from file
-        data = pd.read_csv("equilibrate.txt", header=None)
-        # Plot histogram of equilibration times
-        plt.hist(data, bins=60, color='orangered', range=[0, 5000])
-        plt.xlabel("Equilibration Timesteps")
-        plt.ylabel("Occurrences")
-        plt.show()
+   
 
 if __name__ == "__main__":
     # Parse command line arguments
