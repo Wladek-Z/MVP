@@ -61,6 +61,7 @@ class GameOfLife:
         equ = 10
         # Open file for appending data
         with open(self.filename, 'a') as f:
+            f.write("time\n")
             # Repeat for n simulations
             for i in range(self.n):
                 # Print progress to terminal
