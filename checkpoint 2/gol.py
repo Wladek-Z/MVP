@@ -2,7 +2,6 @@ import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.animation import FuncAnimation
 import argparse
-import pandas as pd
 
 class GameOfLife:
     """Class for simulating Conway's Game of Life on a 2D lattice"""
@@ -29,6 +28,8 @@ class GameOfLife:
         elif (n > 0) and f:
             self.run = self.equilibrate
         # Plot the histogram of equilibration times
+        # Consider asking for -p (--plot) argument?
+        # Or plot in separate file
         elif (n == 0) and (self.init != 'glider') and f:
             self.run = self.histogram
         # Run the GoL with an animation
@@ -168,18 +169,6 @@ class GameOfLife:
         new = (N == 3) | ((old == 1) & ((N == 2)))
         # Convert True/False array into array of 1s and 0s
         return new.astype(int)
-    
-    def histogram(self):
-        """
-        Plot a histogram of equilibration times from data in file.
-        """
-        # Read equilibration time data from file
-        data = pd.read_csv("equilibrate.txt", header=None)
-        # Plot histogram of equilibration times
-        plt.hist(data, bins=60, color='orangered', range=[0, 5000])
-        plt.xlabel("Equilibration Timesteps")
-        plt.ylabel("Occurrences")
-        plt.show()
 
 if __name__ == "__main__":
     # Parse command line arguments
