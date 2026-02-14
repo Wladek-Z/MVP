@@ -27,9 +27,6 @@ class GameOfLife:
         # Collect equilibration time data
         elif (n > 0) and f:
             self.run = self.equilibrate
-        # Plot the histogram of equilibration times
-        elif (n == 0) and (self.init != 'glider') and f:
-            self.run = self.histogram
         # Run the GoL with an animation
         else:
             self.run = self.animate

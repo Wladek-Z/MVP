@@ -14,7 +14,7 @@ def histogram(filename):
         # Read equilibration time data from file
         data = pd.read_csv(filename)['time'].values
         # Plot histogram of equilibration times, discarding outliers above 4000 timesteps
-        plt.hist(data, bins=40, color='orangered', range=[0, 4000], label='P = 0.5')
+        plt.hist(data, bins=40, color='orangered', range=[0, 4000], label=r'$p = 0.5$')
         plt.title("Distribution of Equilibration Times")
         plt.xlabel("Equilibration Timesteps")
         plt.ylabel("Occurrences")
