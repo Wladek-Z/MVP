@@ -45,10 +45,10 @@ class SIRS:
     
     def frame(self, _):
         """
-        Run a sweep of the simulation and return the next frame of the animation.
+        Run 10 sweeps of the simulation and return the next frame of the animation.
         """
-        # Run a sweep of the updating scheme
-        for i in range(self.sweep):                                       
+        # Run 10 sweeps of the updating scheme
+        for i in range(10 * self.sweep):                                       
             self.update()   
         # Clear the figure
         plt.cla()      
@@ -90,10 +90,20 @@ if __name__ == "__main__":
     # Parse command line arguments
     parser = argparse.ArgumentParser()
     parser.add_argument('-L', '--size', type=int, default=50, help='System size (default: 50)')
-    parser.add_argument('-p1', '--probabilitySI', type=float, default=0.5, help='Probability of susceptible becoming infected (default: 0.2)')
+    parser.add_argument('-p1', '--probabilitySI', type=float, default=0.2, help='Probability of susceptible becoming infected (default: 0.2)')
     parser.add_argument('-p2', '--probabilityIR', type=float, default=0.5, help='Probability of infected becoming recovered (default: 0.5)')
-    parser.add_argument('-p3', '--probabilityRS', type=float, default=0.2, help='Probability of recoverd becoming susceptible (default: 0.5)')
+    parser.add_argument('-p3', '--probabilityRS', type=float, default=0.5, help='Probability of recoverd becoming susceptible (default: 0.5)')
+    parser.add_argument('-s', '--state', type=str, choices=['absorbing', 'dynamic', 'cyclic'], default=None, help='Select one of three preset states (default: None)')
     args = parser.parse_args()
 
-    sirs = SIRS(args.size, args.probabilitySI, args.probabilityIR, args.probabilityRS)
+    if args.state == 'absorbing':
+        p1, p2, p3 = 0.2, 0.5, 0.5
+    elif args.state == 'dynamic':
+        p1, p2, p3 = 0.5, 0.5, 0.5
+    elif args.state == 'cyclic':
+        p1, p2, p3 = 0.4, 0.05, 0.005
+    else:
+        p1, p2, p3 = args.probabilitySI, args.probabilityIR, args.probabilityRS
+
+    sirs = SIRS(args.size, p1, p2, p3)
     sirs.animation()
