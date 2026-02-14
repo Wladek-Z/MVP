@@ -28,8 +28,6 @@ class GameOfLife:
         elif (n > 0) and f:
             self.run = self.equilibrate
         # Plot the histogram of equilibration times
-        # Consider asking for -p (--plot) argument?
-        # Or plot in separate file
         elif (n == 0) and (self.init != 'glider') and f:
             self.run = self.histogram
         # Run the GoL with an animation
@@ -65,6 +63,7 @@ class GameOfLife:
         equ = 10
         # Open file for appending data
         with open(self.filename, 'a') as f:
+            f.write("time\n")
             # Repeat for n simulations
             for i in range(self.n):
                 # Print progress to terminal
@@ -129,7 +128,7 @@ class GameOfLife:
         with open(self.filename, 'a') as f:
             f.write("t,x,y\n")
             # Repeat for 999 timesteps
-            for i in range(1, 1000):
+            for i in range(1, 10000):
                 # Update the game board
                 old = self.board.copy()
                 self.board = self.new_board(old)
