@@ -98,8 +98,9 @@ class SIRS:
         over varying pS_I and pR_S, with constant pI_R. Save to file.
         """
         self.pI_R = 0.5
-        p_list = np.arange(0, 1.01, 0.01)
-        filename = "task3.txt"
+        p_list = np.arange(0, 1.05, 0.05)
+        p_list = np.round(p_list, 2)
+        filename = "task3_2.txt"
 
         with open(filename, 'a') as f:
             f.write("pS_I,pR_S,I_frac\n")
@@ -136,7 +137,7 @@ if __name__ == "__main__":
     parser.add_argument('-p2', '--probabilityIR', type=float, default=0.5, help='Probability of infected becoming recovered (default: 0.5)')
     parser.add_argument('-p3', '--probabilityRS', type=float, default=0.5, help='Probability of recoverd becoming susceptible (default: 0.5)')
     parser.add_argument('-s', '--state', type=str, choices=['absorbing', 'dynamic', 'cyclic'], default=None, help='Select one of three preset states (default: None)')
-    parser.add_argument('-t', '--task', type=str, default='animation', choices=['animation', 'task3'], help='Select a task for the simulation (default: animation)')
+    parser.add_argument('-t', '--task', type=str, default='animation', choices=['animation', '3', '4'], help='Select a task for the simulation (default: animation)')
     args = parser.parse_args()
 
     if args.state == 'absorbing':
