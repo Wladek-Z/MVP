@@ -31,6 +31,8 @@ class SIRS:
             self.run = self.animation
         elif task == 'task3':
             self.run = self.task3
+        elif task == 'task4':
+            self.run = self.task4
 
     def animation(self):
         """
@@ -100,7 +102,7 @@ class SIRS:
         self.pI_R = 0.5
         p_list = np.arange(0, 1.05, 0.05)
         p_list = np.round(p_list, 2)
-        filename = "task3_2.txt"
+        filename = "task3.txt"
 
         with open(filename, 'a') as f:
             f.write("pS_I,pR_S,I_frac\n")
@@ -127,6 +129,81 @@ class SIRS:
                     I_frac = np.mean(I) / self.sweep
                     # Append data to file
                     f.write(f"{pS_I},{pR_S},{I_frac}\n")
+
+
+    def task4(self):
+        """
+        Collect data pertaining to the variance of the fraction of infected sites
+        over varying pS_I, with constant pI_R and pR_S. Compute errors and save to file.
+        """
+        self.pI_R = 0.5
+        self.pR_S = 0.5
+        p_list = np.arange(0.2, 0.51, 0.01)
+        p_list = np.round(p_list, 2)
+        filename = "task4.txt"
+
+        with open(filename, 'a') as f:
+            f.write("pS_I,I_var,I_err\n")
+
+            for pS_I in p_list:
+                print(f"Progress: pS_I = {pS_I}")
+                # Update pS_I and clean game board
+                self.pS_I = pS_I
+                self.board = np.random.choice([-1, 0, 1], size=(self.L, self.L))
+                I = np.empty(0)
+                # Equilibrate
+                for i in range(100 * self.sweep):
+                    self.update()
+                # Run 10000 sweeps
+                for i in range(10000):
+                    for j in range(self.sweep):
+                        self.update()
+                    # Count number of infected sites
+                    I = np.append(I, np.sum((self.board == 1).astype(int)))
+                # Calculate variance of infected sites
+                I_var = self.I_variance(I, 0)
+                # Calculate error on the variance
+                I_err = self.jackknife(I, I_var)
+                # Append data to file
+                f.write(f"{pS_I},{I_var},{I_err}\n")
+
+    def jackknife(self, I, I_var):
+        """
+        Compute the standard error via the jackknife method.
+        
+        Arguments:
+            I: full list of number of infected sites over time
+            I_var: the true variance of the number of infected sites
+            
+        Returns:
+            jackknife standard error on the variance
+        """
+        I_jack = [] 
+
+        for i in range(len(I)):                             
+            I_jack.append(np.delete(I, i)) 
+
+        I_jack = np.array(I_jack)
+        I_var_jack = self.I_variance(I_jack, 1)
+        
+        return np.sqrt(np.sum((I_var_jack - I_var)**2))                        
+    
+    def I_variance(self, I, axis):
+        """
+        Calculate the variance of the number of infected sites over time
+        
+        Arguments:
+            I: list of number of infected sites over time
+            axis: axis along which means should be calculated. 0 for 1d array and 1 for 2d array (Jackknife)
+        
+        Returns:
+            variance of the number of infected sites
+        """
+        # Calculate average fraction of infected sites
+        I_frac = np.mean(I, axis=axis) / self.sweep
+        I2_frac = np.mean(I**2, axis=axis) / self.sweep
+        # Return variance
+        return I_frac - I2_frac
 
 
 if __name__ == "__main__":
