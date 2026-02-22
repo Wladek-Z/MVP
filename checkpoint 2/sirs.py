@@ -8,7 +8,7 @@ import random
 class SIRS:
     """Class for simulating the SIRS model on a 2D lattice"""
 
-    def __init__(self, L, pS_I, pI_R, pR_S, task):
+    def __init__(self, L, pS_I, pI_R, pR_S, task, immune):
         """
         Initialise the SIRS board.
         
@@ -17,21 +17,34 @@ class SIRS:
             pS_I: probability of susceptible cell to become infected
             pI_R: probability of infected cell to become recovered
             pR_S: probability of recovered cell to become susceptible
+            task: task for the SIRS model to perform
+            immune: fraction of the population with permanent immunity
         """
         self.L = L
         self.sweep = L**2
         self.pS_I = pS_I
         self.pI_R = pI_R
         self.pR_S = pR_S
+        self.immune = immune
 
         # Let -1 <- R; 0 <- S; 1 <- I
         self.board = np.random.choice([-1, 0, 1], size=(L, L))
+        # Introduce permanently immune cells
+        self.i_cells = self.immune_cells()
+
+        if len(self.i_cells) > 0:
+            i_cells = np.array(list(self.i_cells))
+            i = i_cells[:, 0]
+            j = i_cells[:, 1]
+            # Set immune cells to recovered
+            self.board[i, j] = -1 
+
 
         if task == 'animation':
             self.run = self.animation
-        elif task == 'task3':
+        elif task == '3':
             self.run = self.task3
-        elif task == 'task4':
+        elif task == '4':
             self.run = self.task4
 
     def animation(self):
@@ -42,7 +55,7 @@ class SIRS:
         img = plt.imshow(self.board, cmap='bwr', vmin=-1, vmax=1)
         plt.title('SIRS Model\n' +\
             rf'$p_{{S \rightarrow I}} = {self.pS_I}$, $p_{{I \rightarrow R}} = {self.pI_R}$,' +\
-            rf' $p_{{R \rightarrow S}} = {self.pR_S}$', fontsize = 16)
+            rf' $p_{{R \rightarrow S}} = {self.pR_S}$, $f_{{imm}} = {self.immune}$', fontsize = 16)
         cbar = plt.colorbar(img)
         cbar.set_ticks([-1, 0, 1])
         cbar.set_ticklabels(['R', 'S', 'I'], fontsize=16)
@@ -64,7 +77,7 @@ class SIRS:
         img = plt.imshow(self.board, cmap='bwr', vmin=-1, vmax=1)     
         plt.title('SIRS Model\n' +\
             rf'$p_{{S \rightarrow I}} = {self.pS_I}$, $p_{{I \rightarrow R}} = {self.pI_R}$,' +\
-            rf' $p_{{R \rightarrow S}} = {self.pR_S}$', fontsize = 16)
+            rf' $p_{{R \rightarrow S}} = {self.pR_S}$, $f_{{imm}} = {self.immune}$', fontsize = 16)
         plt.xticks([])
         plt.yticks([])                                                            
         
@@ -77,6 +90,10 @@ class SIRS:
         # Choose a random cell
         i = random.randint(0, self.L-1)
         j = random.randint(0, self.L-1)
+        # First check if cell is permanently immune
+        while (i, j) in self.i_cells:
+            # Exit function
+            return
         # Check state of cell and update accordingly
         if (self.board[i, j] == -1) and np.random.binomial(1, self.pR_S):
             # Change recovered to susceptible
@@ -204,6 +221,28 @@ class SIRS:
         I2_frac = np.mean(I**2, axis=axis) / self.sweep
         # Return variance
         return I_frac - I2_frac
+    
+    def immune_cells(self):
+        """
+        Generate unique [i, j] index pairs for each cell with immunity to the infection.
+
+        Returns:
+            list of [i, j] index pairs corresponding to permanently immune sites
+        """
+        # Compute number of immune cells
+        N = int(self.L**2 * self.immune)
+        # Choose immune sites
+        rows, cols = (self.L, self.L)
+        indices = np.random.choice(self.L**2, size=N, replace=False)
+        # Create arrays of row indices, array of col indices
+        i, j = np.unravel_index(indices, (self.L, self.L))
+        # Create array of immune cell positions in the SIRS model lattice
+        i_cells = np.c_[i, j]
+        # Return as set of tuples
+        if len(i_cells) > 0:
+            return set(map(tuple, i_cells))
+        else:
+            return set()
 
 
 if __name__ == "__main__":
@@ -215,6 +254,7 @@ if __name__ == "__main__":
     parser.add_argument('-p3', '--probabilityRS', type=float, default=0.5, help='Probability of recoverd becoming susceptible (default: 0.5)')
     parser.add_argument('-s', '--state', type=str, choices=['absorbing', 'dynamic', 'cyclic'], default=None, help='Select one of three preset states (default: None)')
     parser.add_argument('-t', '--task', type=str, default='animation', choices=['animation', '3', '4'], help='Select a task for the simulation (default: animation)')
+    parser.add_argument('-i', '--immune', type=float, default=0, help='Choose what fraction of the population should be permanently immune to the infection (default: 0)')
     args = parser.parse_args()
 
     if args.state == 'absorbing':
@@ -226,5 +266,5 @@ if __name__ == "__main__":
     else:
         p1, p2, p3 = args.probabilitySI, args.probabilityIR, args.probabilityRS
 
-    sirs = SIRS(args.size, p1, p2, p3, args.task)
+    sirs = SIRS(args.size, p1, p2, p3, args.task, args.immune)
     sirs.run()
