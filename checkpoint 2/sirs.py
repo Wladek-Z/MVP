@@ -163,7 +163,7 @@ class SIRS:
             f.write("pS_I,I_var,I_err\n")
 
             for pS_I in p_list:
-                print(f"Progress: pS_I = {pS_I}")
+                print(f"Progress: pS_I = {pS_I}\n", end="\r")
                 # Update pS_I and clean game board
                 self.pS_I = pS_I
                 self.board = np.random.choice([-1, 0, 1], size=(self.L, self.L))
@@ -177,6 +177,8 @@ class SIRS:
                         self.update()
                     # Count number of infected sites
                     I = np.append(I, np.sum((self.board == 1).astype(int)))
+                    # Print live progress
+                    print(f"Sweep {i+1}/10000", end="\r")
                 # Calculate variance of infected sites
                 I_var = self.I_variance(I, 0)
                 # Calculate error on the variance
@@ -220,8 +222,9 @@ class SIRS:
         I_frac = np.mean(I, axis=axis) / self.sweep
         I2_frac = np.mean(I**2, axis=axis) / self.sweep
         # Return variance
-        return I_frac - I2_frac
+        return I2_frac - I_frac**2
     
+        
     def immune_cells(self):
         """
         Generate unique [i, j] index pairs for each cell with immunity to the infection.
