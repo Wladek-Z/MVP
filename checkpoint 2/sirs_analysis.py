@@ -38,14 +38,15 @@ def task4(filename):
     """
     # Read in data
     data = pd.read_csv(filename)
-    pS_I = data['pS_I'].values()
-    I_var = data['I_var'].values()
-    I_err = data['I_err'].values()
+    pS_I = data['pS_I'].values
+    I_var = data['I_var'].values
+    I_err = data['I_err'].values
     # Plot data
+    plt.plot(pS_I, I_var, color='deepskyblue', linestyle='-')
     plt.errorbar(pS_I, I_var, yerr=I_err, fmt='.', color='deepskyblue', capsize=5, ecolor='crimson')
-    plt.title(r'Phase Diagram of SIRS Model ($p_{I \rightarrow R} = p_{R \rightarrow S} = 0.5$)')
+    plt.title(r'SIRS Model Variance ($p_{I \rightarrow R} = p_{R \rightarrow S} = 0.5$)')
     plt.xlabel(r'$p_{S \rightarrow I}$')
-    plt.ylabel(r'$(\langle I^2 \rangle - \langle I \rangle^2)/N')
+    plt.ylabel(r'$(\langle I^2 \rangle - \langle I \rangle^2)/N$')
     plt.show()
 
 
