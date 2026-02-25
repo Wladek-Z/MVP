@@ -134,8 +134,9 @@ class SIRS:
                     self.board = np.random.choice([-1, 0, 1], size=(self.L, self.L))
                     I = np.empty(0)
                     # Equilibrate
-                    for i in range(100 * self.sweep):
-                        self.update()
+                    for i in range(100):
+                        for j in range(self.sweep):
+                            self.update()
                     # Run 1000 sweeps
                     for i in range(1000):
                         for j in range(self.sweep):
@@ -169,8 +170,9 @@ class SIRS:
                 self.board = np.random.choice([-1, 0, 1], size=(self.L, self.L))
                 I = np.empty(0)
                 # Equilibrate
-                for i in range(100 * self.sweep):
-                    self.update()
+                for i in range(100):
+                    for j in range(self.sweep):
+                        self.update()
                 # Run 10000 sweeps
                 for i in range(10000):
                     for j in range(self.sweep):
