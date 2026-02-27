@@ -22,8 +22,8 @@ def task3(filename):
     pR_S = pR_S.reshape(size, size)
     I_frac = I_frac.reshape(size, size)
     # Plot colour map of average fraction of infected sites for varying pS_I and pR_S
-    plt.imshow(I_frac, origin='lower', extent=[0, 1, 0, 1], aspect='auto', cmap='viridis')
-    plt.colorbar(label='Average Fraction of Infected Sites')
+    plt.imshow(I_frac, origin='lower', extent=[0, 1, 0, 1], cmap='viridis', interpolation='none')
+    plt.colorbar(label=r'$\langle I \rangle / N$')
     plt.xlabel(r'$p_{S \rightarrow I}$')
     plt.ylabel(r'$p_{R \rightarrow S}$')
     plt.title(r'Phase Diagram of SIRS Model ($p_{I \rightarrow R} = 0.5$)')
@@ -49,15 +49,34 @@ def task4(filename):
     plt.ylabel(r'$(\langle I^2 \rangle - \langle I \rangle^2)/N$')
     plt.show()
 
+def task5(filename):
+    """
+    Plot the average fraction of infected sites as a function of immune fraction.
+    
+    Arguments:
+        filename: filepath to task5 data
+    """
+    # Read in data
+    data = pd.read_csv(filename)
+    f = data['f_imm'].values
+    I = data['I_frac'].values
+    # Plot data
+    plt.plot(f, I, color='rebeccapurple')
+    plt.title("Average Fraction of Infected vs. Fraction of Immunity")
+    plt.xlabel(r'$f_{imm}$')
+    plt.ylabel(r'$\langle I \rangle / N$')
+    plt.show()
 
 if __name__ == "__main__":
     # Parse command line arguments
     parser = argparse.ArgumentParser()
     parser.add_argument('-f', '--filename', type=str, default=None, help='Filepath to the data for the relevant task (default: None)')
-    parser.add_argument('-t', '--task', type=int, choices=[3, 4], default=None, help='Select which task number to perform the analysis for (default: None)')
+    parser.add_argument('-t', '--task', type=int, choices=[3, 4, 5], default=None, help='Select which task number to perform the analysis for (default: None)')
     args = parser.parse_args()
 
     if args.task == 3:
         task3(args.filename)
     elif args.task == 4:
         task4(args.filename)
+    elif args.task == 5:
+        task5(args.filename)

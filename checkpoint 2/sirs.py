@@ -29,7 +29,22 @@ class SIRS:
 
         # Let -1 <- R; 0 <- S; 1 <- I
         self.board = np.random.choice([-1, 0, 1], size=(L, L))
-        # Introduce permanently immune cells
+        # Introduce permanenty immune cells
+        self.immunise()
+        # Choose which task to run
+        if task == 'animation':
+            self.run = self.animation
+        elif task == '3':
+            self.run = self.task3
+        elif task == '4':
+            self.run = self.task4
+        elif task == '5':
+            self.run = self.task5
+
+    def immunise(self):
+        """
+        Introduce permanently immune cells
+        """
         self.i_cells = self.immune_cells()
 
         if len(self.i_cells) > 0:
@@ -38,14 +53,6 @@ class SIRS:
             j = i_cells[:, 1]
             # Set immune cells to recovered
             self.board[i, j] = -1 
-
-
-        if task == 'animation':
-            self.run = self.animation
-        elif task == '3':
-            self.run = self.task3
-        elif task == '4':
-            self.run = self.task4
 
     def animation(self):
         """
@@ -188,6 +195,46 @@ class SIRS:
                 # Append data to file
                 f.write(f"{pS_I},{I_var},{I_err}\n")
 
+    def task5(self):
+        """
+        Collect data pertaining to the fraction of immunity required to prevent the
+        infection from spreading at pS_I = pI_R = pR_S = 0.5.
+        """
+        self.pI_R = 0.5
+        self.pR_S = 0.5
+        self.pS_I = 0.5
+        f_list = np.arange(0, 1.02, 0.02)
+        f_list = np.round(f_list, 2)
+        filename = "task5.txt"
+
+        with open(filename, 'a') as f:
+            f.write("f_imm,I_frac\n")
+
+            for f_imm in f_list:
+                print(f"Progress: f = {f_imm}\n", end="\r")
+                # Update immune fraction and clean game board
+                self.immune = f_imm
+                self.board = np.random.choice([-1, 0, 1], size=(self.L, self.L))
+                self.immunise()
+                I = np.empty(0)
+                # Equilibrate
+                for i in range(100):
+                    for j in range(self.sweep):
+                        self.update()
+                # Run 1000 sweeps
+                for i in range(1000):
+                    for j in range(self.sweep):
+                        self.update()
+                    # Count number of infected sites
+                    I = np.append(I, np.sum((self.board == 1).astype(int)))
+                    # Print live progress
+                    print(f"Sweep {i+1}/1000", end="\r")
+                # Calculate average fraction of infected sites
+                I_frac = np.mean(I) / self.sweep
+                # Append data to file
+                f.write(f"{f_imm},{I_frac}\n")
+
+
     def jackknife(self, I, I_var):
         """
         Compute the standard error via the jackknife method.
@@ -237,7 +284,6 @@ class SIRS:
         # Compute number of immune cells
         N = int(self.L**2 * self.immune)
         # Choose immune sites
-        rows, cols = (self.L, self.L)
         indices = np.random.choice(self.L**2, size=N, replace=False)
         # Create arrays of row indices, array of col indices
         i, j = np.unravel_index(indices, (self.L, self.L))
@@ -258,7 +304,7 @@ if __name__ == "__main__":
     parser.add_argument('-p2', '--probabilityIR', type=float, default=0.5, help='Probability of infected becoming recovered (default: 0.5)')
     parser.add_argument('-p3', '--probabilityRS', type=float, default=0.5, help='Probability of recoverd becoming susceptible (default: 0.5)')
     parser.add_argument('-s', '--state', type=str, choices=['absorbing', 'dynamic', 'cyclic'], default=None, help='Select one of three preset states (default: None)')
-    parser.add_argument('-t', '--task', type=str, default='animation', choices=['animation', '3', '4'], help='Select a task for the simulation (default: animation)')
+    parser.add_argument('-t', '--task', type=str, default='animation', choices=['animation', '3', '4', '5'], help='Select a task for the simulation (default: animation)')
     parser.add_argument('-i', '--immune', type=float, default=0, help='Choose what fraction of the population should be permanently immune to the infection (default: 0)')
     args = parser.parse_args()
 
