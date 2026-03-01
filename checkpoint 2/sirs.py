@@ -8,7 +8,7 @@ import random
 class SIRS:
     """Class for simulating the SIRS model on a 2D lattice"""
 
-    def __init__(self, L, pS_I, pI_R, pR_S, task, immune):
+    def __init__(self, L, pS_I, pI_R, pR_S, task, immune, filename):
         """
         Initialise the SIRS board.
         
@@ -19,6 +19,7 @@ class SIRS:
             pR_S: probability of recovered cell to become susceptible
             task: task for the SIRS model to perform
             immune: fraction of the population with permanent immunity
+            filename: filepath for writing data, if applicable
         """
         self.L = L
         self.sweep = L**2
@@ -26,6 +27,7 @@ class SIRS:
         self.pI_R = pI_R
         self.pR_S = pR_S
         self.immune = immune
+        self.filename = filename
 
         # Let -1 <- R; 0 <- S; 1 <- I
         self.board = np.random.choice([-1, 0, 1], size=(L, L))
@@ -35,10 +37,16 @@ class SIRS:
         if task == 'animation':
             self.run = self.animation
         elif task == '3':
+            while not(self.filename):
+                self.filename = input("Enter filepath to save data: ")
             self.run = self.task3
         elif task == '4':
+            while not(self.filename):
+                self.filename = input("Enter filepath to save data: ")
             self.run = self.task4
         elif task == '5':
+            while not(self.filename):
+                self.filename = input("Enter filepath to save data: ")
             self.run = self.task5
 
     def immunise(self):
@@ -58,6 +66,11 @@ class SIRS:
         """
         Run and animate the SIRS model simulation.
         """
+        # Equilibrate board before displaying animation
+        print("Wait: equilibrating")
+        for i in range(100 * self.sweep):
+            self.update()
+
         fig, ax = plt.subplots(figsize=[10, 8])
         img = plt.imshow(self.board, cmap='bwr', vmin=-1, vmax=1)
         plt.title('SIRS Model\n' +\
@@ -126,9 +139,8 @@ class SIRS:
         self.pI_R = 0.5
         p_list = np.arange(0, 1.05, 0.05)
         p_list = np.round(p_list, 2)
-        filename = "task3.txt"
 
-        with open(filename, 'a') as f:
+        with open(self.filename, 'a') as f:
             f.write("pS_I,pR_S,I_frac\n")
 
             for pS_I in p_list:
@@ -139,7 +151,7 @@ class SIRS:
                     # Initialise variables for new SIRS run
                     self.pR_S = pR_S
                     self.board = np.random.choice([-1, 0, 1], size=(self.L, self.L))
-                    I = np.empty(0)
+                    I = np.zeros(1000)
                     # Equilibrate
                     for i in range(100):
                         for j in range(self.sweep):
@@ -149,7 +161,7 @@ class SIRS:
                         for j in range(self.sweep):
                             self.update()
                         # Count number of infected sites
-                        I = np.append(I, np.sum((self.board == 1).astype(int)))
+                        I[i] = np.sum((self.board == 1).astype(int))
                     # Calculate average fraction of infected sites
                     I_frac = np.mean(I) / self.sweep
                     # Append data to file
@@ -165,9 +177,8 @@ class SIRS:
         self.pR_S = 0.5
         p_list = np.arange(0.2, 0.51, 0.01)
         p_list = np.round(p_list, 2)
-        filename = "task4.txt"
 
-        with open(filename, 'a') as f:
+        with open(self.filename, 'a') as f:
             f.write("pS_I,I_var,I_err\n")
 
             for pS_I in p_list:
@@ -175,7 +186,7 @@ class SIRS:
                 # Update pS_I and clean game board
                 self.pS_I = pS_I
                 self.board = np.random.choice([-1, 0, 1], size=(self.L, self.L))
-                I = np.empty(0)
+                I = np.zeros(10000)
                 # Equilibrate
                 for i in range(100):
                     for j in range(self.sweep):
@@ -185,7 +196,7 @@ class SIRS:
                     for j in range(self.sweep):
                         self.update()
                     # Count number of infected sites
-                    I = np.append(I, np.sum((self.board == 1).astype(int)))
+                    I[i] = np.sum((self.board == 1).astype(int))
                     # Print live progress
                     print(f"Sweep {i+1}/10000", end="\r")
                 # Calculate variance of infected sites
@@ -205,9 +216,8 @@ class SIRS:
         self.pS_I = 0.5
         f_list = np.arange(0, 1.02, 0.02)
         f_list = np.round(f_list, 2)
-        filename = "task5.txt"
 
-        with open(filename, 'a') as f:
+        with open(self.filename, 'a') as f:
             f.write("f_imm,I_frac\n")
 
             for f_imm in f_list:
@@ -216,7 +226,7 @@ class SIRS:
                 self.immune = f_imm
                 self.board = np.random.choice([-1, 0, 1], size=(self.L, self.L))
                 self.immunise()
-                I = np.empty(0)
+                I = np.zeros(1000)
                 # Equilibrate
                 for i in range(100):
                     for j in range(self.sweep):
@@ -226,7 +236,7 @@ class SIRS:
                     for j in range(self.sweep):
                         self.update()
                     # Count number of infected sites
-                    I = np.append(I, np.sum((self.board == 1).astype(int)))
+                    I[i] = np.sum((self.board == 1).astype(int))
                     # Print live progress
                     print(f"Sweep {i+1}/1000", end="\r")
                 # Calculate average fraction of infected sites
@@ -261,17 +271,17 @@ class SIRS:
         Calculate the variance of the number of infected sites over time
         
         Arguments:
-            I: list of number of infected sites over time
+            I   : list of number of infected sites over time
             axis: axis along which means should be calculated. 0 for 1d array and 1 for 2d array (Jackknife)
         
         Returns:
             variance of the number of infected sites
         """
-        # Calculate average fraction of infected sites
-        I_frac = np.mean(I, axis=axis) / self.sweep
-        I2_frac = np.mean(I**2, axis=axis) / self.sweep
+        # Calculate mean, mean squared of infected sites
+        mean_I = np.mean(I, axis=axis)
+        mean_I2 = np.mean(I**2, axis=axis)
         # Return variance
-        return I2_frac - I_frac**2
+        return (mean_I2 - mean_I**2) / self.sweep
     
         
     def immune_cells(self):
@@ -305,7 +315,8 @@ if __name__ == "__main__":
     parser.add_argument('-p3', '--probabilityRS', type=float, default=0.5, help='Probability of recoverd becoming susceptible (default: 0.5)')
     parser.add_argument('-s', '--state', type=str, choices=['absorbing', 'dynamic', 'cyclic'], default=None, help='Select one of three preset states (default: None)')
     parser.add_argument('-t', '--task', type=str, default='animation', choices=['animation', '3', '4', '5'], help='Select a task for the simulation (default: animation)')
-    parser.add_argument('-i', '--immune', type=float, default=0, help='Choose what fraction of the population should be permanently immune to the infection (default: 0)')
+    parser.add_argument('-i', '--immune', type=float, default=0, help='Choose fraction of the population with permanent immunity to the infection (default: 0)')
+    parser.add_argument('-f', '--filename', type=str, default=None, help='Filepath to save data, if applicable (default: None)')
     args = parser.parse_args()
 
     if args.state == 'absorbing':
@@ -313,9 +324,9 @@ if __name__ == "__main__":
     elif args.state == 'dynamic':
         p1, p2, p3 = 0.5, 0.5, 0.5
     elif args.state == 'cyclic':
-        p1, p2, p3 = 0.5, 0.05, 0.007
+        p1, p2, p3 = 0.4, 0.05, 0.0056
     else:
         p1, p2, p3 = args.probabilitySI, args.probabilityIR, args.probabilityRS
 
-    sirs = SIRS(args.size, p1, p2, p3, args.task, args.immune)
+    sirs = SIRS(args.size, p1, p2, p3, args.task, args.immune, args.filename)
     sirs.run()

@@ -4,7 +4,7 @@ import pandas as pd
 import argparse
 from scipy.optimize import curve_fit
 
-def histogram(filename):
+def task2(filename):
         """
         Plot a histogram of equilibration times from data in file.
 
@@ -21,7 +21,7 @@ def histogram(filename):
         plt.legend()
         plt.show()
 
-def glider_speed(filename):
+def task3(filename):
         """
         Analyse the speed of the glider. Plot glider distance from origin against timestep.
         Use curve fit to find gradient for multiple segments of motion, then plot histogram of speed distribution. 
@@ -75,11 +75,15 @@ def glider_speed(filename):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("-a", "--analyse", type=str, choices=['equ', 'com'], default=None, help="Select which analysis to perform (default: None)")
-    parser.add_argument("-f", "--filename", type=str, default=None, help="Name of file containing data to analyse (default: None)")
+    parser.add_argument("-t", "--task", type=int, choices=[2, 3], default=None, help="Select which task to perform the analysis for (default: None)")
+    parser.add_argument('-f', '--filename', type=str, default=None, help='Filepath to read data for the relevant task (default: None)')
     args = parser.parse_args()
-    
-    if args.analyse == 'equ':
-        histogram(args.filename)
-    elif args.analyse == 'com':
-         glider_speed(args.filename)
+
+    f = args.filename
+    while not(f):
+        f = input("Enter filepath to read data: ")
+
+    if args.task == 2:
+        task2(f)
+    elif args.task == 3:
+        task3(f)

@@ -20,7 +20,7 @@ def task3(filename):
     size = len(set(pS_I))
     pS_I = pS_I.reshape(size, size)
     pR_S = pR_S.reshape(size, size)
-    I_frac = I_frac.reshape(size, size)
+    I_frac = I_frac.reshape(size, size).T
     # Plot colour map of average fraction of infected sites for varying pS_I and pR_S
     plt.imshow(I_frac, origin='lower', extent=[0, 1, 0, 1], cmap='viridis', interpolation='none')
     plt.colorbar(label=r'$\langle I \rangle / N$')
@@ -70,13 +70,17 @@ def task5(filename):
 if __name__ == "__main__":
     # Parse command line arguments
     parser = argparse.ArgumentParser()
-    parser.add_argument('-f', '--filename', type=str, default=None, help='Filepath to the data for the relevant task (default: None)')
-    parser.add_argument('-t', '--task', type=int, choices=[3, 4, 5], default=None, help='Select which task number to perform the analysis for (default: None)')
+    parser.add_argument('-f', '--filename', type=str, default=None, help='Filepath to read data for the relevant task (default: None)')
+    parser.add_argument('-t', '--task', type=int, choices=[3, 4, 5], default=None, help='Select which task to perform the analysis for (default: None)')
     args = parser.parse_args()
 
+    f = args.filename
+    while not(f):
+        f = input("Enter filepath to read data: ")
+
     if args.task == 3:
-        task3(args.filename)
+        task3(f)
     elif args.task == 4:
-        task4(args.filename)
+        task4(f)
     elif args.task == 5:
-        task5(args.filename)
+        task5(f)
