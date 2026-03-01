@@ -4,29 +4,25 @@ Contains the GameOfLife class, for running simulations of Conway's Game of Life.
 
 ## Arguments
 
-### -L SIZE, --size SIZE  
+    -L SIZE, --size SIZE  
+        -System size
+        -Type: integer
+        -Default: 50
 
-    -System size
-    -Type: integer
-    -Default: 50
+    -i {random,blinker,glider}, --initialstate {random,blinker,glider}
+        -Initial state of the game board
+        -Type: string
+        -Default: random
 
-### -i {random,blinker,glider}, --initialstate {random,blinker,glider}
+    -t {animation,2,3}, --task {animation,2,3}
+        -Select a task for the simulation
+        -Type: string 
+        -Default: animation
 
-    -Initial state of the game board
-    -Type: string
-    -Default: random
-
-### -t {animation,2,3}, --task {animation,2,3}
-
-    -Select a task for the simulation
-    -Type: string 
-    -Default: animation
-
-### -f FILENAME, --filename FILENAME
-
-    -Filepath to save data, if applicable
-    -Type: string
-    -Default: None
+    -f FILENAME, --filename FILENAME
+        -Filepath to save data, if applicable
+        -Type: string
+        -Default: None
 
 ## Usage
 
@@ -56,17 +52,15 @@ Runs analysis of various outputs from the GameOfLife class.
 
 ## Arguments
 
-### -t {2,3}, --task {2,3}
-                        
-    -Select which task to perform the analysis for 
-    -Type: integer
-    -Default: None
+    -t {2,3}, --task {2,3}                 
+        -Select which task to perform the analysis for 
+        -Type: integer
+        -Default: None
 
-### -f FILENAME, --filename FILENAME
-
-    -Filepath to read data for the relevant task 
-    -Type: string
-    -Default: None
+    -f FILENAME, --filename FILENAME
+        -Filepath to read data for the relevant task 
+        -Type: string
+        -Default: None
 
 ## Usage
 
@@ -90,53 +84,45 @@ Contains the SIRS class, for running simulations of the SIRS model.
 
 ## Arguments
 
-### -L SIZE, --size SIZE  
+    -L SIZE, --size SIZE 
+        -System size 
+        -Type: integer
+        -Default: 50
 
-    -System size 
-    -Type: integer
-    -Default: 50
+    -p1 PROBABILITYSI, --probabilitySI PROBABILITYSI
+        -Probability of susceptible becoming infected 
+        -Type: float
+        -Default: 0.2
 
-### -p1 PROBABILITYSI, --probabilitySI PROBABILITYSI
+    -p2 PROBABILITYIR, --probabilityIR PROBABILITYIR
+        -Probability of infected becoming recovered
+        -Type: float
+        -Default: 0.5
 
-    -Probability of susceptible becoming infected 
-    -Type: float
-    -Default: 0.2
+    -p3 PROBABILITYRS, --probabilityRS PROBABILITYRS
+        -Probability of recoverd becoming susceptible
+        -Type: float
+        -Default: 0.5
 
-### -p2 PROBABILITYIR, --probabilityIR PROBABILITYIR
+    -s {absorbing,dynamic,cyclic}, --state {absorbing,dynamic,cyclic}
+        -Select one of three preset states
+        -Type: string
+        -Default: None
 
-    -Probability of infected becoming recovered
-    -Type: float
-    -Default: 0.5
+    -t {animation,3,4,5}, --task {animation,3,4,5}
+        -Select a task for the simulation
+        -Type: string
+        -Default: animation
 
-### -p3 PROBABILITYRS, --probabilityRS PROBABILITYRS
-    
-    -Probability of recoverd becoming susceptible
-    -Type: float
-    -Default: 0.5
+    -i IMMUNE, --immune IMMUNE
+        -Choose fraction of the population with permanent immunity to the infection
+        -Type: float
+        -Default: 0
 
-### -s {absorbing,dynamic,cyclic}, --state {absorbing,dynamic,cyclic}
-
-    -Select one of three preset states
-    -Type: string
-    -Default: None
-
-### -t {animation,3,4,5}, --task {animation,3,4,5}
-
-    -Select a task for the simulation
-    -Type: string
-    -Default: animation
-
-### -i IMMUNE, --immune IMMUNE
-
-    -Choose fraction of the population with permanent immunity to the infection
-    -Type: float
-    -Default: 0
-
-### -f FILENAME, --filename FILENAME
-
-    -Filepath to save data, if applicable
-    -Type: string
-    -Default: None
+    -f FILENAME, --filename FILENAME
+        -Filepath to save data, if applicable
+        -Type: string
+        -Default: None  
 
 ## Usage
 
@@ -172,17 +158,15 @@ Runs analysis of various outputs from the SIRS class.
 
 ## Arguments
 
-### -t {3,4,5}, --task {3,4,5}
-                        
-    -Select which task to perform the analysis for 
-    -Type: integer
-    -Default: None
+    -t {3,4,5}, --task {3,4,5}               
+        -Select which task to perform the analysis for 
+        -Type: integer
+        -Default: None
 
-### -f FILENAME, --filename FILENAME
-
-    -Filepath to read data for the relevant task 
-    -Type: string
-    -Default: None
+    -f FILENAME, --filename FILENAME
+        -Filepath to read data for the relevant task 
+        -Type: string
+        -Default: None
 
 ## Usage
 
