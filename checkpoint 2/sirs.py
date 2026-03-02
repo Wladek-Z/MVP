@@ -49,18 +49,6 @@ class SIRS:
                 self.filename = input("Enter filepath to save data: ")
             self.run = self.task5
 
-    def immunise(self):
-        """
-        Introduce permanently immune cells
-        """
-        self.i_cells = self.immune_cells()
-
-        if len(self.i_cells) > 0:
-            i_cells = np.array(list(self.i_cells))
-            i = i_cells[:, 0]
-            j = i_cells[:, 1]
-            # Set immune cells to recovered
-            self.board[i, j] = -1 
 
     def animation(self):
         """
@@ -100,7 +88,7 @@ class SIRS:
             rf' $p_{{R \rightarrow S}} = {self.pR_S}$, $f_{{imm}} = {self.immune}$', fontsize = 16)
         plt.xticks([])
         plt.yticks([]) 
-        
+
         return img
     
     def update(self):
@@ -283,6 +271,20 @@ class SIRS:
         # Return variance
         return (mean_I2 - mean_I**2) / self.L**2
     
+
+    def immunise(self):
+        """
+        Introduce permanently immune cells
+        """
+        self.i_cells = self.immune_cells()
+
+        if len(self.i_cells) > 0:
+            i_cells = np.array(list(self.i_cells))
+            i = i_cells[:, 0]
+            j = i_cells[:, 1]
+            # Set immune cells to recovered
+            self.board[i, j] = -1 
+
         
     def immune_cells(self):
         """
