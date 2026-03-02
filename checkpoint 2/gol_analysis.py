@@ -21,7 +21,7 @@ def task2(filename):
     plt.legend()
     plt.show()
 
-def task3(filename):
+def task3_OLD(filename):
     """
     Analyse the speed of the glider. Plot glider distance from origin against timestep.
     Use curve fit to find gradient for multiple segments of motion, then plot each fit over the data. 
@@ -64,17 +64,60 @@ def task3(filename):
     upper_t = t[upper_limit]
     plt.scatter(t_split[0], d_split[0]/np.sqrt(2), color='mediumslateblue', marker='o', label='COM data')
     plt.plot(t_split[0], linear_func(t_split[0], speeds[0], intercepts[0]), color='orangered', linestyle='-', label='Linear fit')
+    pbc = 0
     for T, D, S, I in zip(t_split[1:], d_split[1:], speeds[1:], intercepts[1:]):
+        pbc += 1
         # Divide data by sqrt(2) to account for diagonal motion of glider
-        plt.scatter(T, D/np.sqrt(2), color='mediumslateblue', marker='o')
-        plt.plot(T, linear_func(T, S, I), color='orangered', linestyle='-')
+        plt.scatter(T, D/np.sqrt(2) + (pbc * 50), color='mediumslateblue', marker='o')
+        plt.plot(T, linear_func(T, S, I) + (pbc * 50), color='orangered', linestyle='-')
     plt.title(f"Glider Distance from Origin vs Time\n (first {upper_t} timesteps)")
     plt.xlabel("Time [timesteps]")
     plt.ylabel("Distance from Origin [cell diagonals]")
-    plt.yticks([0, 10, 20, 30, 40, 50], ['0', '10', '20', '30', '40', '50'])
-    plt.xlim(0, upper_t)
+    #plt.yticks([0, 10, 20, 30, 40, 50], ['0', '10', '20', '30', '40', '50'])
+    #plt.xlim(0, upper_t)
     plt.legend(loc='upper right')
     plt.show()
+
+def task3(filename):
+    """
+    Analyse the speed of the glider. Plot glider distance from origin against timestep.
+    Use curve fit to find gradient of cells travelled against time, then plot the fit over the data. 
+    Display the mean speed, and the standard error on the mean.
+    
+    Arguments:
+        filename: Name of file containing glider position data
+    """
+    # Read glider position data from file
+    data = pd.read_csv(filename)
+    t = data['t'].values
+    x = data['x'].values
+    y = data['y'].values
+    # Combine x and y position data to get total distance travelled at each time step
+    # Divide by sqrt(2) to account for diagonal motion of glider, giving distance in cell diagonals
+    d = np.sqrt((x**2 + y**2)) / np.sqrt(2)
+    # Split the data for crossing of periodic boundary conditions
+    splits = np.where(np.diff(t) > 1)[0] + 1
+    # Adjust distances to account for each crossing of the periodic boundaries
+    for i in range(len(splits)):
+        d[splits[i]:] += 50
+    # Define a linear function for curve fitting
+    linear_func = lambda t, m, c: m * t + c
+    # Fit the linear function to the glider motion and extract the gradient (speed)
+    popt, _ = curve_fit(linear_func, t, d)
+    # Unit of speed is cell diagonals per timestep, a.k.a. 'c'
+    speed = popt[0]
+    intercept = popt[1]
+    # Print speed
+    print(f'Speed = {speed:.3f}c')
+    # Plot cells from origin vs time
+    plt.scatter(t, d, color='mediumslateblue', marker='o', label='COM data')
+    plt.plot(t, linear_func(t, speed, intercept), color='orangered', linestyle='-', label=f'Linear fit (gradient = {speed:.3f}c)')
+    plt.title(f"Glider Distance from Origin against Time")
+    plt.xlabel("Time [timesteps]")
+    plt.ylabel("Distance from Origin [cell diagonals]")
+    plt.legend(loc='upper left', fontsize='small')
+    plt.show()
+    
 
 
 
