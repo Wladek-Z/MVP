@@ -62,11 +62,11 @@ def task3(filename):
     # Plot distance from origin vs time
     upper_limit = 949
     upper_t = t[upper_limit]
-    plt.scatter(t_split[0], d_split[0]/np.sqrt(2), color='indigo', marker='o', label='COM data')
+    plt.scatter(t_split[0], d_split[0]/np.sqrt(2), color='mediumslateblue', marker='o', label='COM data')
     plt.plot(t_split[0], linear_func(t_split[0], speeds[0], intercepts[0]), color='orangered', linestyle='-', label='Linear fit')
     for T, D, S, I in zip(t_split[1:], d_split[1:], speeds[1:], intercepts[1:]):
         # Divide data by sqrt(2) to account for diagonal motion of glider
-        plt.scatter(T, D/np.sqrt(2), color='indigo', marker='o')
+        plt.scatter(T, D/np.sqrt(2), color='mediumslateblue', marker='o')
         plt.plot(T, linear_func(T, S, I), color='orangered', linestyle='-')
     plt.title(f"Glider Distance from Origin vs Time\n (first {upper_t} timesteps)")
     plt.xlabel("Time [timesteps]")
