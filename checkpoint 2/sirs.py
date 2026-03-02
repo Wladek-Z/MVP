@@ -31,7 +31,7 @@ class SIRS:
 
         # Let -1 <- R; 0 <- S; 1 <- I
         self.board = np.random.choice([-1, 0, 1], size=(L, L))
-        # Introduce permanenty immune cells
+        # Introduce permanently immune cells
         self.immunise()
         # Choose which task to run
         if task == 'animation':
@@ -99,7 +99,7 @@ class SIRS:
             rf'$p_{{S \rightarrow I}} = {self.pS_I}$, $p_{{I \rightarrow R}} = {self.pI_R}$,' +\
             rf' $p_{{R \rightarrow S}} = {self.pR_S}$, $f_{{imm}} = {self.immune}$', fontsize = 16)
         plt.xticks([])
-        plt.yticks([])                                                            
+        plt.yticks([]) 
         
         return img
     
@@ -281,7 +281,7 @@ class SIRS:
         mean_I = np.mean(I, axis=axis)
         mean_I2 = np.mean(I**2, axis=axis)
         # Return variance
-        return (mean_I2 - mean_I**2) / self.sweep
+        return (mean_I2 - mean_I**2) / self.L**2
     
         
     def immune_cells(self):
