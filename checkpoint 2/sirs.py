@@ -113,10 +113,10 @@ class SIRS:
             self.board[i, j] = -1
         elif (self.board[i, j] == 1) and np.random.binomial(1, self.pS_I):
             # Check for any infected nearest neighbours
-            NN = np.array([np.roll(self.board,  1, axis=0)[i, j],
-                           np.roll(self.board, -1, axis=0)[i, j],
-                           np.roll(self.board,  1, axis=1)[i, j],
-                           np.roll(self.board, -1, axis=1)[i, j]])
+            NN = np.array([self.board[i, (j+1) % self.L], 
+                           self.board[i, (j-1) % self.L], 
+                           self.board[(i+1) % self.L, j], 
+                           self.board[(i-1) % self.L, j]])
             if 0 in set(NN):
                 # Change susceptible to infected
                 self.board[i, j] = 0
