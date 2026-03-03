@@ -92,7 +92,7 @@ Contains the SIRS class, for running simulations of the SIRS model.
     -p1 PROBABILITYSI, --probabilitySI PROBABILITYSI
         -Probability of susceptible becoming infected 
         -Type: float
-        -Default: 0.2
+        -Default: 0.5
 
     -p2 PROBABILITYIR, --probabilityIR PROBABILITYIR
         -Probability of infected becoming recovered
