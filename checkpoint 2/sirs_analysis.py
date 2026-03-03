@@ -61,7 +61,8 @@ def task5(filename):
     f = data['f_imm'].values
     I = data['I_frac'].values
     # Plot data
-    plt.plot(f, I, color='rebeccapurple')
+    plt.plot(f, I, color='mediumslateblue', linestyle='-')
+    plt.scatter(f, I, color='orangered', marker='.')
     plt.title("Average Fraction of Infected vs. Fraction of Immunity")
     plt.xlabel(r'$f_{imm}$')
     plt.ylabel(r'$\langle I \rangle / N$')
