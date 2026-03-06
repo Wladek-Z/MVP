@@ -29,33 +29,50 @@ class SIRS:
         self.pR_S = pR_S
         self.immune = immune
         self.filename = filename
-        # Let -1 <- R; 0 <- I; 1 <- S; -2 <- immune
-        self.board = np.random.choice([-2, -1, 0, 1], size=(L, L), \
-                                      p=[immune, (1-immune)/3, (1-immune)/3, (1-immune)/3])
+        # Populate SIRS board
+        self.populate(immune)
         # Choose which task to run
         if task == 'animation':
+            # Run with animation
             self.run = self.animation
         elif task == '3':
+            # Collect task 3 data
             while not(self.filename):
                 self.filename = input("Enter filepath to save data: ")
             self.run = self.task3
         elif task == '4':
+            # Collect task 4 data
             while not(self.filename):
                 self.filename = input("Enter filepath to save data: ")
             self.run = self.task4
         elif task == '5':
+            # Collect task 5 data
             while not(self.filename):
                 self.filename = input("Enter filepath to save data: ")
             self.run = self.task5
+
+    def populate(self, immune):
+        """
+        Populate board with susceptible, recovered, infected, and immune
+        (if applicable) cells. Let -1 <- R; 0 <- I; 1 <- S; -2 <- immune.
+
+        Arguments: 
+            immune: fraction of permanently immune sites
+        """
+        # Create 1D array of length L**2 with random cells within set (-1, 0, 1)
+        arr = np.random.choice([-1, 0, 1], self.L**2)
+        # Insert immune sites from fraction, rounded down
+        num_immune = int(immune * self.L**2)
+        arr[:num_immune] = -2
+        # Shuffle array
+        random.shuffle(arr)
+        # Reshape 1D array into 2D SIRS board
+        self.board = arr.reshape(self.L, self.L)
 
     def animation(self):
         """
         Run and animate the SIRS model simulation.
         """
-        # Equilibrate board before displaying animation
-        print("Wait: equilibrating")
-        for i in range(100 * self.sweep):
-            self.update()
         # Create custom cmap
         colours = ['black', 'blue', 'red', 'white']
         self.cmap = mc.ListedColormap(colours)
@@ -136,11 +153,13 @@ class SIRS:
             for pS_I in p_list:
                 # Update pS_I
                 self.pS_I = pS_I
+
                 for pR_S in p_list:
                     print(f"Progress: pS_I = {pS_I}, pR_S = {pR_S}")
                     # Initialise variables for new SIRS run
+                    # Update pR_S
                     self.pR_S = pR_S
-                    # No need to include immune cells
+                    # More efficient board population for 0 immunity case
                     self.board = np.random.choice([-1, 0, 1], size=(self.L, self.L))
                     I = np.zeros(1000)
                     # Equilibrate
@@ -175,7 +194,7 @@ class SIRS:
                 print(f"Progress: pS_I = {pS_I}\n", end="\r")
                 # Update pS_I and clean game board
                 self.pS_I = pS_I
-                # No need to include immune cells
+                # More efficient board population for 0 immunity case
                 self.board = np.random.choice([-1, 0, 1], size=(self.L, self.L))
                 I = np.zeros(10000)
                 # Equilibrate
@@ -214,8 +233,7 @@ class SIRS:
             for f_imm in f_list:
                 print(f"Progress: f = {f_imm}\n", end="\r")
                 # Update immune fraction and clean game board
-                self.board = np.random.choice([-2, -1, 0, 1], size=(self.L, self.L), \
-                                      p=[f_imm, (1-f_imm)/3, (1-f_imm)/3, (1-f_imm)/3])
+                self.populate(f_imm)
                 I = np.zeros(1000)
                 # Equilibrate
                 for i in range(100):
@@ -291,7 +309,7 @@ if __name__ == "__main__":
     elif args.state == 'dynamic':
         p1, p2, p3 = 0.5, 0.5, 0.5
     elif args.state == 'cyclic':
-        p1, p2, p3 = 0.38, 0.049, 0.0056
+        p1, p2, p3 = 0.4, 0.05, 0.0056
     else:
         p1, p2, p3 = args.probabilitySI, args.probabilityIR, args.probabilityRS
 

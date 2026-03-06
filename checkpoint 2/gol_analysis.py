@@ -25,7 +25,7 @@ def task3_OLD(filename):
     """
     Analyse the speed of the glider. Plot glider distance from origin against timestep.
     Use curve fit to find gradient for multiple segments of motion, then plot each fit over the data. 
-    Display the mean speed, and the standard error on the mean.
+    Display the mean speed, and the standard error on the mean. Not used for checkpoint.
     
     Arguments:
         filename: Name of file containing glider position data
