@@ -127,8 +127,8 @@ class CahnHilliard:
         phi = self.phi.copy()
         # Calculate gradient squared via CFD
         dphi2 = 1 / (4 * self.dx**2)\
-                *   ((np.roll(phi, 1, axis=0) - np.roll(phi, -1, axis=0))**2\
-                +    (np.roll(phi, 1, axis=1) - np.roll(phi, -1, axis=1))**2)
+                *   ((np.roll(phi, -1, axis=0) - np.roll(phi, 1, axis=0))**2\
+                +    (np.roll(phi, -1, axis=1) - np.roll(phi, 1, axis=1))**2)
         # Calculate free energy density at each position
         f = -0.5 * phi**2 + 0.25 * phi**4 + dphi2
         # return free energy
