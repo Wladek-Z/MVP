@@ -130,9 +130,9 @@ class CahnHilliard:
                 *   ((np.roll(phi, -1, axis=0) - np.roll(phi, 1, axis=0))**2\
                 +    (np.roll(phi, -1, axis=1) - np.roll(phi, 1, axis=1))**2)
         # Calculate free energy density at each position
-        f = -0.5 * phi**2 + 0.25 * phi**4 + dphi2
+        f = -0.5 * phi**2 + 0.25 * phi**4 + 0.5 * dphi2
         # return free energy
-        return np.sum(f)
+        return np.sum(f) / self.L**2
     
     def task5(self):
         """
@@ -159,7 +159,7 @@ class CahnHilliard:
             file.write("time,f\n")
             # Initialise the order parameter field
             self.phi = (np.ones((self.L, self.L)) * phi_0) \
-                       + np.random.uniform(-0.2, high=0.2, size=(self.L, self.L))
+                       + np.random.uniform(-0.01, high=0.01, size=(self.L, self.L))
             # Initialise time and free energy
             t = 0
             f = self.free_energy()
@@ -173,7 +173,7 @@ class CahnHilliard:
                 # Calculate new free energy density
                 f_new = self.free_energy()
                 # Check if the system has equilibrated
-                if (np.abs(f_new - f) < tol) and (t > 49999):
+                if t > 1000000:#(np.abs(f_new - f) < tol) and (t > 49999):
                     break
                 else:
                     f = f_new
