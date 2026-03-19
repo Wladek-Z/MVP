@@ -21,9 +21,9 @@ class Poisson:
         self.tol = tol
         self.converged = False
         self.iters = 0
-        # Initialise the charge density for a single charge at the centre
+        # Initialise the charge density for a random charge distribution around the centre of the middle-z slice
         self.rho = np.zeros((L, L, L))
-        self.rho[L//2][L//2][L//2] = 1
+        self.rho[L//4:3*L//4, L//4:3*L//4, L//2] = np.random.choice([0, 1], size=(L//2, L//2), p=[0.99, 0.01])
         # Initialise potential
         self.phi = np.zeros((L, L, L))
 
@@ -114,11 +114,26 @@ class Poisson:
 
         plt.show()
 
+    def run_arb(self):
+        """
+        Calculate the potential and resultant electric field due to
+        an arbitrary charge distribution.
+        """
+        # Converge the potential
+        while not(self.converged):
+            self.update()
+
+        # Plot the electrostatic potential
+        self.e_potential()
+
     def monopole(self):
         """
         Calculate the potential and resultant electric field due to
         a single charge at the centre.
         """
+        # Initialise the charge density for a single charge at the centre
+        self.rho = np.zeros((self.L, self.L, self.L))
+        self.rho[self.L//2, self.L//2, self.L//2] = 1
         # Converge the potential
         while not(self.converged):
             self.update()
@@ -151,7 +166,7 @@ class Poisson:
 if __name__ == "__main__":
     argparser = argparse.ArgumentParser(description="Poisson equation simulation")
     argparser.add_argument('-L', '--size', type=int, default=49, help="System size (default: 49)")
-    argparser.add_argument('-t', '--tolerance', type=float, default=1e-3, help="Accuracy of final solution (default: 1e-3)")
+    argparser.add_argument('-t', '--tolerance', type=float, default=1e-6, help="Accuracy of final solution (default: 1e-6)")
     args = argparser.parse_args()
 
     P = Poisson(args.size, args.tolerance)
