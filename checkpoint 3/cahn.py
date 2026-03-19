@@ -2,6 +2,57 @@ import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.animation import FuncAnimation
 import argparse
+from numba import njit
+
+@njit
+def laplacian(x, L):
+    """
+    Calculate the laplacian of x.
+    
+    Arguments:
+        x: the chemical potential or the order parameter field
+        L: system size
+    
+    Returns:
+        laplacian: the lapacian of x
+    """
+    laplacian = np.zeros_like(x)
+    for i in range(L):
+        for j in range(L):
+            up = (i - 1) % L
+            down = (i + 1) % L
+            left = (j - 1) % L
+            right = (j + 1) % L
+            laplacian[i, j] = x[up, j] + x[down, j] + x[i, left] + x[i, right] - 4 * x[i, j]
+
+    return laplacian
+
+@njit
+def free_energy(phi, L, dx):
+    """
+    Calculate the free energy via CFD.
+
+    Arguments:
+        phi: the current order parameter field
+        L: system size
+        dx: spatial step
+    
+    Returns:
+        the free energy of the system
+    """
+    dphi2 = np.zeros_like(phi)
+    for i in range(L):
+        for j in range(L):
+            up = (i - 1) % L
+            down = (i + 1) % L
+            left = (j - 1) % L
+            right = (j + 1) % L
+            # Apply central finite difference scheme
+            dphi2[i, j] = (phi[up, j]  - phi[down, j])**2 + (phi[i, left] - phi[i, right])**2
+    # Calculate free energy density at each position
+    f = -0.5 * phi**2 + 0.25 * phi**4 + 0.5 * 1 / (4 * dx**2) * dphi2
+    # return free energy
+    return np.sum(f) 
 
 class CahnHilliard:
     """
@@ -21,7 +72,7 @@ class CahnHilliard:
         # Set initial state of board to phi_0 plus some small random noise
         self.phi = (np.ones((L, L)) * phi_0) + np.random.uniform(-0.01, high=0.01, size=(L, L))
 
-    def order_parameter(self, phi):
+    def update(self, phi):
         """
         Calculate the next order parameter field.
         
@@ -31,47 +82,8 @@ class CahnHilliard:
         Returns:
             the updated order parameter field
         """
-        mu = self.chemical_potential(phi)
-        laplacian = self.laplacian(mu)
-        return phi + self.dt / self.dx**2 * laplacian
-    
-    def chemical_potential(self, phi):
-        """
-        Calculate the chemical potential.
-
-        Arguments:
-            phi: the order parameter field
-        
-        Returns:
-            the chemical potential
-        """
-        laplacian = self.laplacian(phi)
-        return - phi * (1 - phi**2) - self.dx**(-2) * laplacian
-    
-    def laplacian(self, x):
-        """
-        Calculate the laplacian of x.
-        
-        Arguments:
-            x: the chemical potential or the order parameter field
-        
-        Returns:
-            laplacian: the lapacian of x
-        """
-        laplacian = np.roll(x, -1, axis=0)  \
-                    + np.roll(x, 1, axis=0) \
-                    + np.roll(x, -1, axis=1)\
-                    + np.roll(x, 1, axis=1) \
-                    - 4 * x
-        return laplacian
-    
-    def update(self):
-        """
-        Update the order parameter field.
-        """
-        phi = self.phi.copy()
-        self.phi = self.order_parameter(phi)
-
+        mu = - phi * (1 - phi**2) - self.dx**(-2) * laplacian(phi, self.L)
+        return phi + self.dt / self.dx**2 * laplacian(mu, self.L)
     
     def animation(self):
         """
@@ -100,9 +112,10 @@ class CahnHilliard:
         Returns:
             img: figure displaying the (old) system
         """
-        # Run the update procedure 1000 times
+        # Update 1000 times
         for i in range(1000):
-            self.update()
+            phi = self.phi.copy()
+            self.phi = self.update(phi)
 
         # Clear the figure
         plt.cla()      
@@ -114,25 +127,6 @@ class CahnHilliard:
         plt.yticks([]) 
         # Return image of board for animation
         return img
-    
-
-    def free_energy(self):
-        """
-        Calculate the free energy.
-        
-        Returns:
-            the free energy of the system
-        """
-        # Get current order parameter field
-        phi = self.phi.copy()
-        # Calculate gradient squared via CFD
-        dphi2 = 1 / (4 * self.dx**2)\
-                *   ((np.roll(phi, -1, axis=0) - np.roll(phi, 1, axis=0))**2\
-                +    (np.roll(phi, -1, axis=1) - np.roll(phi, 1, axis=1))**2)
-        # Calculate free energy density at each position
-        f = -0.5 * phi**2 + 0.25 * phi**4 + 0.5 * dphi2
-        # return free energy
-        return np.sum(f) / self.L**2
     
     def task5(self):
         """
@@ -152,32 +146,33 @@ class CahnHilliard:
             filename: file to save the data
             phi_0: initial value for the order parameter field
         """
-        # Set tolerance for equilibrium
-        tol = 1e-4
-
         with open(filename, 'w') as file:
             file.write("time,f\n")
             # Initialise the order parameter field
             self.phi = (np.ones((self.L, self.L)) * phi_0) \
                        + np.random.uniform(-0.01, high=0.01, size=(self.L, self.L))
-            # Initialise time and free energy
+            # Initialise time
             t = 0
-            f = self.free_energy()
-            # Write initial values to file
+            # Record initial state
+            phi = self.phi.copy()
+            f = free_energy(phi, self.L, self.dx)
             file.write(f"{t},{f}\n")
             # Run the simulation until equilibrium
             while True:
-                t += 1
+                # increment time
+                t += self.dt
                 # Run the update procedure
-                self.update()
-                # Calculate new free energy density
-                f_new = self.free_energy()
-                # Check if the system has equilibrated
-                if t > 1000000:#(np.abs(f_new - f) < tol) and (t > 49999):
+                phi = self.phi.copy()
+                self.phi = self.update(phi)
+                # Calculate the free energy density
+                f = free_energy(phi, self.L, self.dx)
+                # Write to file
+                file.write(f"{t},{f}\n")
+                # Check if sufficient time has passed
+                if t > 8000:
                     break
-                else:
-                    f = f_new
-                    file.write(f"{t},{f}\n")
+                
+                    
 
     def plot(self):
         """
@@ -192,8 +187,8 @@ class CahnHilliard:
         plt.figure(figsize=[10, 8])
         plt.plot(data1[:, 0], data1[:, 1], label=r'$\phi_0 = 0.0$')
         plt.plot(data2[:, 0], data2[:, 1], label=r'$\phi_0 = 0.5$')
-        plt.xlabel('time step', fontsize=16)
-        plt.ylabel(r'free energy ($a$)', fontsize=16)
+        plt.xlabel(r'time [$\kappa/Ma^2$]', fontsize=16)
+        plt.ylabel(r'free energy [$a$]', fontsize=16)
         plt.title('Free Energy vs Time for Cahn-Hilliard Simulation', fontsize=16)
         plt.legend(fontsize=16)
         plt.show()
@@ -206,7 +201,7 @@ if __name__ == "__main__":
     argparser.add_argument('--animation', action='store_true', help='Run the animation')
     argparser.add_argument('--plot', action='store_true', help='Plot the free energy for task 5')
     argparser.add_argument('-L', '--size', type=int, default=50, help='Systems size (default: 50)')
-    argparser.add_argument('-dt', '--timestep', type=float, default=0.001, help='Time step (default: 0.001)')
+    argparser.add_argument('-dt', '--timestep', type=float, default=0.01, help='Time step (default: 0.01)')
     argparser.add_argument('-phi0', '--initialphi', type=float, default=0.0, help='Initial state of the order parameter field (default: 0.0)')
     args = argparser.parse_args()
     
