@@ -12,11 +12,10 @@ class Ising:
                L: {int} system size
              kBT: {float} thermal energy (J=1)
         dynamics: {str} 'G' or 'K' for Glauber/Kawasaki dynamics, respectively
-        
-        Note: J has been set to 1 and not included as a parameter
         """
         self.L = L
         self.kBT = kBT
+        self.J = 1
         self.sweep = L * L                                    # Define a unique unit of time for an LxL system                                         # Keep track of how many sweeps have passed
         self.M = np.empty(0)                                  # Initialise empty list for magnetisation measurements
         self.E = np.empty(0)                                  # Initialise empty list for energy measurements
@@ -111,7 +110,7 @@ class Ising:
             k_col = (i_col + dcol) % self.L
             I_sum += self.S[i_row, i_col] * self.S[k_row, k_col] # Add contribution due to pair
 
-        return 2 * I_sum                                         # Shortcut energy change calculation
+        return 2 * self.J * I_sum                                # Shortcut energy change calculation
 
     def delta_E_K(self, i_row, i_col, j_row, j_col):
         """calculate the energy change upon switching spin states i and j in Kawasaki dynamics.
@@ -136,7 +135,7 @@ class Ising:
             if [k_row, k_col] != [i_row, i_col]:                     # Swapping neighbouring i and j has no effect
                 J_sum += self.S[i_row, i_col] * self.S[k_row, k_col] # Compute contribution due to pair
 
-        return -2 * (I_sum + J_sum)                                  # Calculate total energy change
+        return -2 * self.J * (I_sum + J_sum)                         # Calculate total energy change
 
     def metropolis(self, dE):
         """use the Metropolis algorithm to decide whether to flip the spin state"""
@@ -170,7 +169,7 @@ class Ising:
                     k_col = (j + dcol) % self.L
                     E_sum += -self.S[i, j] * self.S[k_row, k_col] # Add contribution due to pair
 
-        return E_sum / 2                                          # Avoid double counting
+        return self.J * E_sum / 2                                 # Avoid double counting
     
     def avg_E(self, E):
         """return average energy and average energy squared.
