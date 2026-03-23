@@ -6,7 +6,7 @@ from numba import njit
 from scipy.optimize import curve_fit
 
 @njit
-def Gauss_Seidel(phi, rho, L):
+def Gauss_Seidel_electric(phi, rho, L):
     """
     Calculate the updated potential using the Gauss-Seidel algorithm.
     
@@ -27,6 +27,32 @@ def Gauss_Seidel(phi, rho, L):
                                         + phi[i, j+1, k]\
                                             + phi[i, j, k-1]\
                                                 + phi[i, j, k+1]\
+                                                    + rho[i, j, k]) / 6
+    return phi
+
+@njit
+def Gauss_Seidel_magnetic(phi, rho, L):
+    """
+    Calculate the updated potential using the Gauss-Seidel algorithm,
+    this time for the magnetic problem.
+    
+    Arguments:
+        phi: the current potential
+        rho: the charge density distribution
+        L: system size
+    
+    Returns:
+        phi: the updated potential
+    """
+    for i in range(1, L-1):
+        for j in range(1, L-1):
+            for k in range(0, L):
+                phi[i, j, k] = (phi[i-1, j, k]\
+                                + phi[i+1, j, k]\
+                                    + phi[i, j-1, k]\
+                                        + phi[i, j+1, k]\
+                                            + phi[i, j, (k-1) % L]\
+                                                + phi[i, j, (k+1) % L]\
                                                     + rho[i, j, k]) / 6
     return phi
 
@@ -78,45 +104,68 @@ class Poisson:
         self.converged = False
         self.iters     = 0
         self.w         = w
-        # Initialise the charge density for a single charge at the centre
-        self.rho = np.zeros((L, L, L))
-        self.rho[self.L//2, self.L//2, self.L//2] = 1
+        self.method = method
         # Initialise potential
         self.phi = np.zeros((L, L, L))
-        # Choose method
-        if method == 'Jacobi':
-            self.alg = self.Jacobi
-        elif method == 'Gauss-Seidel':
-            self.alg = Gauss_Seidel
-        elif method == 'SOR':
-            self.alg = self.SOR
 
-    def Jacobi(self, phi, _=None, __=None):
+    def Jacobi(self, old_phi, _=None, __=None):
         """
         Calculate the updated potential using the Jacobi algorithm.
+        
+        Arguments:
+            old_phi: the current potential
+        
+        Returns:
+            the updated potential
+        """
+        phi = (np.roll(old_phi, -1, axis=0)\
+                    + np.roll(old_phi, 1, axis=0)\
+                        + np.roll(old_phi, -1, axis=1)\
+                            + np.roll(old_phi, 1, axis=1)\
+                                + np.roll(old_phi, -1, axis=2)\
+                                    + np.roll(old_phi, 1, axis=2)\
+                                        + self.rho) / 6
+        # Apply boundary conditions
+        phi_new = self.boundary_conditions(phi)
+        # Return the updated potential
+        return phi_new
+
+    def electric_BC(self, phi):
+        """
+        Apply the boundary conditions for the electric field problem.
         
         Arguments:
             phi: the current potential
         
         Returns:
-            the updated potential
+            phi: the potential with updated boundary conditions
         """
-        phi_new = (np.roll(phi, -1, axis=0)\
-                    + np.roll(phi, 1, axis=0)\
-                        + np.roll(phi, -1, axis=1)\
-                            + np.roll(phi, 1, axis=1)\
-                                + np.roll(phi, -1, axis=2)\
-                                    + np.roll(phi, 1, axis=2)\
-                                        + self.rho) / 6
-        # Apply boundary conditions
-        phi_new[0, :, :] = \
-            phi_new[-1, :, :] = \
-                phi_new[:, 0, :] = \
-                    phi_new[:, -1, :] = \
-                        phi_new[:, :, 0] = \
-                            phi_new[:, :, -1] = 0
+        phi[0, :, :] = \
+            phi[-1, :, :] = \
+                phi[:, 0, :] = \
+                    phi[:, -1, :] = \
+                        phi[:, :, 0] = \
+                            phi[:, :, -1] = 0
         # Return the updated potential
-        return phi_new
+        return phi
+
+    def magnetic_BC(self, phi):
+        """
+        Apply the boundary conditions for the magnetic field problem.
+        
+        Arguments:
+            phi: the current potential
+        
+        Returns:
+            phi: the potential with updated boundary conditions
+        """
+        phi[0, :, :] = \
+            phi[-1, :, :] = \
+                phi[:, 0, :] = \
+                    phi[:, -1, :] = 0
+        # Return the updated potential
+        return phi
+
     
     def SOR(self, phi_old, _=None, __=None):
         """
@@ -129,7 +178,7 @@ class Poisson:
             the updated potential
         """
         phi = phi_old.copy()
-        phi_new = Gauss_Seidel(phi, self.rho, self.L)
+        phi_new = self.Gauss_Seidel(phi, self.rho, self.L)
         delta = phi_new - phi_old
         return phi_old + self.w * delta
     
@@ -153,6 +202,21 @@ class Poisson:
         Calculate the potential and resultant electric field due to
         a single charge at the centre, then save to file.
         """
+        # Initialise the charge density for a single charge at the centre
+        self.rho = np.zeros((self.L, self.L, self.L))
+        self.rho[self.L//2, self.L//2, self.L//2] = 1
+        # Set electric boundary conditions method
+        self.boundary_conditions = self.electric_BC
+        # Use electric Gauss-Seidel
+        self.Gauss_Seidel = Gauss_Seidel_electric
+        # Choose method
+        if self.method == 'Jacobi':
+            self.alg = self.Jacobi
+        elif self.method == 'Gauss-Seidel':
+            self.alg = self.Gauss_Seidel
+        elif self.method == 'SOR':
+            self.alg = self.SOR
+
         # Converge the potential
         while not(self.converged):
             self.update()
@@ -162,10 +226,17 @@ class Poisson:
         Ex, Ey = E_field(slice, self.L)
         E = np.sqrt(Ex**2 + Ey**2)
 
+        # Choose titles and colour bar labels for plotting
+        title_pot = "Electrostatic Potential"
+        cbar_label_pot = r'electrostatic potential $\phi$'
+        title1_field = 'Electric field vector'
+        title2_field = 'Electric field strength'
+        cbar_label_field = r'Electric field $|E|$'
+
         # Plot the electrostatic potential
-        self.plot_potential(slice)
+        self.plot_potential(slice, title_pot, cbar_label_pot)
         # Plot the electric field
-        self.plot_field(Ex, Ey, E)
+        self.plot_field(Ex, Ey, E, title1_field, title2_field, cbar_label_field)
 
         # Save potential and E-field to file if desired
         save = input("Save results to file? [y/n]: ")
@@ -196,10 +267,17 @@ class Poisson:
             slice_Ex[m, :] = Ex[(m * L):((m + 1) * L)]
             slice_Ey[m, :] = Ey[(m * L):((m + 1) * L)]
 
+        # Choose titles and colour bar labels for plotting
+        title_pot = "Electrostatic Potential"
+        cbar_label_pot = r'electrostatic potential $\phi$'
+        title1_field = 'Electric field vector'
+        title2_field = 'Electric field strength'
+        cbar_label_field = r'Electric field $|E|$'
+
         # Plot the electrostatic potential
-        self.plot_potential(slice_phi)
+        self.plot_potential(slice_phi, title_pot, cbar_label_pot)
         # Plot the electric field
-        self.plot_field(slice_Ex, slice_Ey, slice_E)
+        self.plot_field(slice_Ex, slice_Ey, slice_E, title1_field, title2_field, cbar_label_field)
 
         # Perform the curve fit
         self.fit_curves(r, phi, E)
@@ -266,26 +344,28 @@ class Poisson:
 
         plt.show()
 
-    def plot_potential(self, slice):
+    def plot_potential(self, slice, title, cbar_label):
         """
         Plot the electrostatic potential.
 
         Arguments:
             slice: the potential on a 2D plane
+            title: desired title of the plot
+            cbar_label: desired label for the colour bar
         """
         fig, ax = plt.subplots(figsize=[10, 8])
         img = plt.imshow(slice, cmap='plasma', vmin=0, vmax=np.max(slice), origin='lower')
 
-        plt.title('Electrostatic Potential', fontsize = 16)
+        plt.title(title, fontsize = 16)
         # Add colour bar
         cbar = plt.colorbar(img, ax=ax)
-        cbar.set_label(r'electrostatic potential $\phi$', size=16)
+        cbar.set_label(cbar_label, size=16)
 
         plt.xlabel(r'$x$', fontsize=16)
         plt.ylabel(r'$y$', fontsize=16)
         plt.show()
 
-    def plot_field(self, Ex, Ey, E):
+    def plot_field(self, Ex, Ey, E, title1, title2, cbar_label):
         """
         Plot the electric field.
 
@@ -293,28 +373,58 @@ class Poisson:
             Ex: the x-component of the electric field on a 2D midplane
             Ey: the y-component of the electric field on a 2D midplane
             E: the magnitude of the electric field on a 2D midplane
+            title1: title of vector plot
+            title2: title of magnitude plot
+            cbar_label: desired colour bar label
         """
         fig, (ax1, ax2) = plt.subplots(1, 2, figsize=[18, 8])
 
         # Plot the electric field as a quiver plot
         ax1.quiver(Ex, Ey, scale=0.3)
-        ax1.set_title('Electric field vector', fontsize=16)
+        ax1.set_title(title1, fontsize=16)
         ax1.set_xlabel(r'$x$', fontsize=12)
         ax1.set_ylabel(r'$y$', fontsize=12)
 
         # Also plot the electric field magnitude as a contour plot
         img = ax2.imshow(E, cmap='plasma', vmin=0, vmax=np.max(E), origin='lower')
-        ax2.set_title('Electric field strength', fontsize=16)
+        ax2.set_title(title2, fontsize=16)
         ax2.set_xlabel(r'$x$', fontsize=12)
         ax2.set_ylabel(r'$y$', fontsize=12)
         # Add colour bar
         cbar = plt.colorbar(img, fraction=0.046, pad=0.04)
-        cbar.set_label(r'Electric field $|E|$', size=12)
+        cbar.set_label(cbar_label, size=12)
 
         plt.show()
 
     
+    def wire(self):
+        """
+        Calculate the potential and resultant magnetic field due to
+        a single z-wire at the centre, then save to file.
+        """
+        # Initialise the charge density for a wire at the centre of the x-y plane along the z-axis
+        self.rho = np.zeros((self.L, self.L, self.L))
+        self.rho[self.L//2, self.L//2, :] = 1
+        # Set magnetic boundary conditions method
+        self.boundary_conditions = self.magnetic_BC
+        # Use magnetic Gauss-Seidel
+        self.Gauss_Seidel = Gauss_Seidel_magnetic
+        # Choose method
+        if self.method == 'Jacobi':
+            self.alg = self.Jacobi
+        elif self.method == 'Gauss-Seidel':
+            self.alg = self.Gauss_Seidel
+        elif self.method == 'SOR':
+            self.alg = self.SOR
 
+        # Converge the potential
+        while not(self.converged):
+            self.update()
+
+        # Save potential and B-field to file if desired
+        save = input("Save results to file? [y/n]: ")
+        if save == "y":
+            self.save_monopole()
         
 
 
@@ -336,5 +446,7 @@ if __name__ == "__main__":
         P.monopole()
     elif args.task7:
         P.task7()
+    elif args.wire:
+        P.wire()
     else:
         print("Error: no action input")
