@@ -503,7 +503,49 @@ class Poisson:
         Find the optimal value of the relaxation parameter (w), such as to minimise the number of
         iterations required for convergence in the SOR method. Save results to file (task 10)
         """
-        print("temp")
+        # Initialise the charge density for a single charge at the centre
+        self.rho = np.zeros((self.L, self.L, self.L))
+        self.rho[self.L//2, self.L//2, self.L//2] = 1
+        # Set electric boundary conditions method
+        self.boundary_conditions = self.electric_BC
+        # Use electric Gauss-Seidel
+        self.Gauss_Seidel = Gauss_Seidel_electric
+        # Choose method
+        self.alg = self.SOR
+
+        # collect convergence data over different w
+        w_list = np.linspace(1.622, 1.627, 20)
+
+        with open("poisson_task10.txt", 'w') as f:
+            f.write("w,iters\n")
+            for w in w_list:
+                # Initialise relaxation parameter, potential, iters, and convergence
+                self.w = w
+                self.phi = np.zeros((self.L, self.L, self.L))
+                self.iters = 0
+                self.converged = False
+
+                # Converge the electrostatic potential
+                while not(self.converged):
+                    self.update()
+                
+                # Write to file
+                f.write(f"{w},{self.iters}\n")
+                        
+        # Plot number of iterations vs relaxation parameter
+        w, iters = np.loadtxt("poisson_task10.txt", skiprows=1, unpack=True, delimiter=',')
+
+        best_w = np.round(w[np.argmin(iters)], 6)
+        
+        plt.plot(w, iters, color='black')
+        plt.axvline(best_w, color='black', linestyle='--', label=rf'$\omega_0 =$ {best_w}')
+        plt.xlabel("relaxation parameter", fontsize=16)
+        plt.ylabel("iteration to convergence", fontsize=16)
+        plt.legend(fontsize=12)
+
+        plt.show()
+
+                
 
 
 
