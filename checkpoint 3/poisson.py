@@ -6,7 +6,7 @@ from numba import njit
 from scipy.optimize import curve_fit
 
 @njit
-def Gauss_Seidel_electric(phi, rho, L):
+def Gauss_Seidel_electric(phi, rho, L, dx):
     """
     Calculate the updated potential using the Gauss-Seidel algorithm.
     
@@ -14,6 +14,7 @@ def Gauss_Seidel_electric(phi, rho, L):
         phi: the current potential
         rho: the charge density distribution
         L: system size
+        dx: spatial resolution
     
     Returns:
         phi: the updated potential
@@ -27,11 +28,11 @@ def Gauss_Seidel_electric(phi, rho, L):
                                         + phi[i, j+1, k]\
                                             + phi[i, j, k-1]\
                                                 + phi[i, j, k+1]\
-                                                    + rho[i, j, k]) / 6
+                                                    + dx**2 * rho[i, j, k]) / 6
     return phi
 
 @njit
-def Gauss_Seidel_magnetic(phi, rho, L):
+def Gauss_Seidel_magnetic(phi, rho, L, dx):
     """
     Calculate the updated potential using the Gauss-Seidel algorithm,
     this time for the magnetic problem.
@@ -40,6 +41,7 @@ def Gauss_Seidel_magnetic(phi, rho, L):
         phi: the current potential
         rho: the charge density distribution
         L: system size
+        dx: spatial resolution
     
     Returns:
         phi: the updated potential
@@ -53,17 +55,18 @@ def Gauss_Seidel_magnetic(phi, rho, L):
                                         + phi[i, j+1, k]\
                                             + phi[i, j, (k-1) % L]\
                                                 + phi[i, j, (k+1) % L]\
-                                                    + rho[i, j, k]) / 6
+                                                    + dx**2 * rho[i, j, k]) / 6
     return phi
 
 @njit
-def E_field(phi, L):
+def E_field(phi, L, dx):
         """
         Calculate the electric field from the potential.
 
         Arguments:
             phi: a slice of the potential
             L: system size
+            dx: spatial resolution
         
         Returns:
             the electric field components
@@ -78,9 +81,39 @@ def E_field(phi, L):
                 down = (i + 1) % L
                 left = (j - 1) % L
                 right = (j + 1) % L
-                Ey[i, j] = -0.5 * (phi[down, j] - phi[up, j])
-                Ex[i, j] = -0.5 * (phi[i, right] - phi[i, left])
+                Ey[i, j] = -0.5 * (phi[down, j] - phi[up, j]) / dx
+                Ex[i, j] = -0.5 * (phi[i, right] - phi[i, left]) / dx
+
         return Ex, Ey
+
+@njit
+def B_field(A, L, dx):
+        """
+        Calculate the magnetic field from the potential.
+
+        Arguments:
+            A: a slice of the vector potential
+            L: system size
+            dx: spatial resolution
+        
+        Returns:
+            the magnetic field components
+        """
+        # Initialise components of magnetic field
+        Bx = np.zeros((L, L))
+        By = np.zeros((L, L))
+        # Calculate the curl of A through central finite difference (CFD)
+        for i in range(L):
+            for j in range(L):
+                up = (i - 1) % L
+                down = (i + 1) % L
+                left = (j - 1) % L
+                right = (j + 1) % L
+                Bx[i, j] = 0.5 * (A[down, j] - A[up, j]) / dx
+                By[i, j] = -0.5 * (A[i, right] - A[i, left]) /dx
+
+        return Bx, By
+
 
 
 class Poisson:
@@ -105,10 +138,11 @@ class Poisson:
         self.iters     = 0
         self.w         = w
         self.method = method
+        self.dx = 1
         # Initialise potential
         self.phi = np.zeros((L, L, L))
 
-    def Jacobi(self, old_phi, _=None, __=None):
+    def Jacobi(self, old_phi, _=None, __=None, ___=None):
         """
         Calculate the updated potential using the Jacobi algorithm.
         
@@ -124,7 +158,7 @@ class Poisson:
                             + np.roll(old_phi, 1, axis=1)\
                                 + np.roll(old_phi, -1, axis=2)\
                                     + np.roll(old_phi, 1, axis=2)\
-                                        + self.rho) / 6
+                                        + self.dx * self.rho) / 6
         # Apply boundary conditions
         phi_new = self.boundary_conditions(phi)
         # Return the updated potential
@@ -167,7 +201,7 @@ class Poisson:
         return phi
 
     
-    def SOR(self, phi_old, _=None, __=None):
+    def SOR(self, phi_old, _=None, __=None, ___=None):
         """
         Calculate the updated potential using the SOR algorithm.
         
@@ -178,7 +212,7 @@ class Poisson:
             the updated potential
         """
         phi = phi_old.copy()
-        phi_new = self.Gauss_Seidel(phi, self.rho, self.L)
+        phi_new = self.Gauss_Seidel(phi, self.rho, self.L, self.dx)
         delta = phi_new - phi_old
         return phi_old + self.w * delta
     
@@ -189,7 +223,7 @@ class Poisson:
         # Obtain updated potential and update phi, increment iters
         phi = self.phi.copy()
         phi_old = self.phi.copy()
-        self.phi = self.alg(phi, self.rho, self.L)
+        self.phi = self.alg(phi, self.rho, self.L, self.dx)
         self.iters += 1
         # Check for convergence
         if np.max(np.abs(self.phi - phi_old)) <= self.tol:
@@ -199,8 +233,8 @@ class Poisson:
     
     def monopole(self):
         """
-        Calculate the potential and resultant electric field due to
-        a single charge at the centre, then save to file.
+        Calculate the potential and resultant electric field due to a single charge at the centre, 
+        display Gaussian fits. Save to file. (task 7)
         """
         # Initialise the charge density for a single charge at the centre
         self.rho = np.zeros((self.L, self.L, self.L))
@@ -223,7 +257,7 @@ class Poisson:
 
         # Take slice through middle of potential for plot
         slice = self.phi[:, :, self.L//2]
-        Ex, Ey = E_field(slice, self.L)
+        Ex, Ey = E_field(slice, self.L, self.dx)
         E = np.sqrt(Ex**2 + Ey**2)
 
         # Choose titles and colour bar labels for plotting
@@ -237,68 +271,34 @@ class Poisson:
         self.plot_potential(slice, title_pot, cbar_label_pot)
         # Plot the electric field
         self.plot_field(Ex, Ey, E, title1_field, title2_field, cbar_label_field)
-
-        # Save potential and E-field to file if desired
-        save = input("Save results to file? [y/n]: ")
-        if save == "y":
-            self.save_monopole()
-
-    def task7(self):
-        """
-        Read in data regarding potential and electric field due to a single
-        charge from file and plot results. Also fit the potential and electric 
-        field strengths as a function of the distance to the charge. (task 7)
-        """
-        # Read in data to plot phi and E
-        i, r, phi, Ex, Ey = np.loadtxt('poisson_monopole.txt', skiprows=1, \
-                                    usecols=[0, 2, 3, 4, 5], unpack=True, delimiter=',')
-        E = np.sqrt(Ex**2 + Ey**2)
-
-        # Recreate potential and E-field on 2D plane from datafile
-        L = int(np.sqrt(len(i)))
-        slice_phi = np.zeros((L, L))
-        slice_E = np.zeros((L, L))
-        slice_Ex = np.zeros((L, L))
-        slice_Ey = np.zeros((L, L))
-
-        for m in range(L):
-            slice_phi[m, :] = phi[(m * L):((m + 1) * L)]
-            slice_E[m, :] = E[(m * L):((m + 1) * L)]
-            slice_Ex[m, :] = Ex[(m * L):((m + 1) * L)]
-            slice_Ey[m, :] = Ey[(m * L):((m + 1) * L)]
-
-        # Choose titles and colour bar labels for plotting
-        title_pot = "Electrostatic Potential"
-        cbar_label_pot = r'electrostatic potential $\phi$'
-        title1_field = 'Electric field vector'
-        title2_field = 'Electric field strength'
-        cbar_label_field = r'Electric field $|E|$'
-
-        # Plot the electrostatic potential
-        self.plot_potential(slice_phi, title_pot, cbar_label_pot)
-        # Plot the electric field
-        self.plot_field(slice_Ex, slice_Ey, slice_E, title1_field, title2_field, cbar_label_field)
-
+        # Save potential and E-field to file 
+        self.save_data("poisson_monopole.txt", Ex, Ey)
+        # Read in data to get r and phi
+        r, phi = np.loadtxt('poisson_monopole.txt', skiprows=1, usecols=[2, 3], unpack=True, delimiter=',')
         # Perform the curve fit
-        self.fit_curves(r, phi, E)
+        self.fit_curves_electric(r, phi, E)
 
-    def save_monopole(self):
+    def save_data(self, filename, Fx, Fy):
         """
-        Save the monopole electrostatic potential and electric field data to file.
+        Save the potential and field data to file.
+
+        Arguments:
+            filename: desired name of the output file
+            Fx: the x-component of the field on a 2D midplane
+            Fy: the y-component of the field on a 2D midplane
         """
         slice = self.phi[:, :, self.L//2]
-        Ex, Ey = E_field(slice, self.L)
-        with open('poisson_monopole.txt', 'w') as f:
-            f.write("i,j,r,phi,Ex,Ey\n")
+        with open(filename, 'w') as f:
+            f.write("i,j,r,pot,Fieldx,Fieldy\n")
             for i in range(self.L):
                 for j in range(self.L):
                     # Calculate distance to monopole
-                    r = np.linalg.norm([(self.L // 2) - j, (self.L // 2) - i])
-                    f.write(f"{i},{j},{r},{slice[i, j]},{Ex[i, j]},{Ey[i, j]}\n")
+                    r = np.linalg.norm([((self.L // 2) - j) * self.dx, ((self.L // 2) - i) * self.dx])
+                    f.write(f"{i},{j},{r},{slice[i, j]},{Fx[i, j]},{Fy[i, j]}\n")
 
-    def fit_curves(self, r, phi, E):
+    def fit_curves_electric(self, r, phi, E):
         """
-        Read in data from monopole.txt and fit electrostatic potential/electric
+        Read in data from poisson_monopole.txt and fit electrostatic potential/electric
         field strength to Gauss's law.
 
         Arguments:
@@ -344,6 +344,55 @@ class Poisson:
 
         plt.show()
 
+    def fit_curves_magnetic(self, r, A, B):
+        """
+        Read in data from poisson_wire.txt and fit magnetic potential/electric
+        field strength to Ampere's law.
+
+        Arguments:
+            r: magnitude of separation from monopole
+            A: magnetic potential at each value of separation
+            B: magnetic field strength at each value of separation
+        """
+        # Delete r=0 elements for curve fitting
+        A = np.delete(A, r==0)
+        B   = np.delete(B,   r==0)
+        r   = np.delete(r,   r==0)
+
+        # Sort the data
+        sort = np.argsort(r)
+        r = r[sort]
+        A = A[sort] 
+        B = B[sort]
+
+        # Create curves from Ampere's law
+        r0 = np.min(r[A == 0])
+        A_Ampere =  np.log(r0 / r) / (2 * np.pi)
+        B_Ampere = 1 / (2 * np.pi * r)
+
+        # Plot the data
+        fig, (ax1, ax2) = plt.subplots(1, 2, figsize=[18, 8])
+
+        ax1.scatter(r, A, marker=".", color="orange", label="data")
+        ax1.plot(r, A_Ampere, color="blue", label=r"$-ln(r)/2\pi + C$")
+        ax1.set_xlabel(r'$r$', fontsize=12)
+        ax1.set_ylabel(r'$A$', fontsize=12)
+        ax1.set_yscale("log")
+        ax1.set_xscale("log")
+        ax1.set_title("Magnetic potential", fontsize=16)
+        ax1.legend(loc="upper right", fontsize=12)
+
+        ax2.scatter(r, B, marker=".", color="orange", label="data")
+        ax2.plot(r, B_Ampere, color="blue", label=r"$1/2\pi r$")
+        ax2.set_xlabel(r'$r$', fontsize=12)
+        ax2.set_ylabel(r'$|B|$', fontsize=12)
+        ax2.set_yscale("log")
+        ax2.set_xscale("log")
+        ax2.set_title("Magnetic field strength", fontsize=16)
+        ax2.legend(loc="upper right", fontsize=12)
+
+        plt.show()
+
     def plot_potential(self, slice, title, cbar_label):
         """
         Plot the electrostatic potential.
@@ -354,7 +403,7 @@ class Poisson:
             cbar_label: desired label for the colour bar
         """
         fig, ax = plt.subplots(figsize=[10, 8])
-        img = plt.imshow(slice, cmap='plasma', vmin=0, vmax=np.max(slice), origin='lower')
+        img = plt.imshow(slice, cmap='plasma', origin='lower')
 
         plt.title(title, fontsize = 16)
         # Add colour bar
@@ -365,28 +414,33 @@ class Poisson:
         plt.ylabel(r'$y$', fontsize=16)
         plt.show()
 
-    def plot_field(self, Ex, Ey, E, title1, title2, cbar_label):
+    def plot_field(self, Fx, Fy, F, title1, title2, cbar_label):
         """
-        Plot the electric field.
+        Plot the field.
 
         Arguments:
-            Ex: the x-component of the electric field on a 2D midplane
-            Ey: the y-component of the electric field on a 2D midplane
-            E: the magnitude of the electric field on a 2D midplane
+            Fx: the x-component of the field on a 2D midplane
+            Fy: the y-component of the field on a 2D midplane
+            F: the magnitude of the field on a 2D midplane
             title1: title of vector plot
             title2: title of magnitude plot
             cbar_label: desired colour bar label
         """
         fig, (ax1, ax2) = plt.subplots(1, 2, figsize=[18, 8])
 
+        if title1 == "Magnetic field vector":
+            scale = 0.8
+        else:
+            scale = 0.3
+
         # Plot the electric field as a quiver plot
-        ax1.quiver(Ex, Ey, scale=0.3)
+        ax1.quiver(Fx, Fy, scale=scale)
         ax1.set_title(title1, fontsize=16)
         ax1.set_xlabel(r'$x$', fontsize=12)
         ax1.set_ylabel(r'$y$', fontsize=12)
 
         # Also plot the electric field magnitude as a contour plot
-        img = ax2.imshow(E, cmap='plasma', vmin=0, vmax=np.max(E), origin='lower')
+        img = ax2.imshow(F, cmap='plasma', origin='lower')
         ax2.set_title(title2, fontsize=16)
         ax2.set_xlabel(r'$x$', fontsize=12)
         ax2.set_ylabel(r'$y$', fontsize=12)
@@ -399,13 +453,13 @@ class Poisson:
     
     def wire(self):
         """
-        Calculate the potential and resultant magnetic field due to
-        a single z-wire at the centre, then save to file.
+        Calculate the potential and resultant magnetic field due to a single wire at the centre
+        extending through z, fit to Ampere's law. Save to file. (task 9)
         """
         # Initialise the charge density for a wire at the centre of the x-y plane along the z-axis
         self.rho = np.zeros((self.L, self.L, self.L))
         self.rho[self.L//2, self.L//2, :] = 1
-        # Set magnetic boundary conditions method
+        # Set magnetic boundary conditions method (periodic along z-axis)
         self.boundary_conditions = self.magnetic_BC
         # Use magnetic Gauss-Seidel
         self.Gauss_Seidel = Gauss_Seidel_magnetic
@@ -421,11 +475,35 @@ class Poisson:
         while not(self.converged):
             self.update()
 
-        # Save potential and B-field to file if desired
-        save = input("Save results to file? [y/n]: ")
-        if save == "y":
-            self.save_monopole()
-        
+        # Take slice through middle of potential for plot
+        slice = self.phi[:, :, self.L//2]
+        Bx, By = B_field(slice, self.L, self.dx)
+        B = np.sqrt(Bx**2 + By**2)
+
+        # Choose titles and colour bar labels for plotting
+        title_pot = r'Magnetic Potential ($z$-component)'
+        cbar_label_pot = r'magnetic potential $A_z$'
+        title1_field = 'Magnetic field vector'
+        title2_field = 'Magnetic field strength'
+        cbar_label_field = r'Magnetic field $|B|$'
+
+        # Plot the magnetic potential
+        self.plot_potential(slice, title_pot, cbar_label_pot)
+        # Plot the magnetic field
+        self.plot_field(Bx, By, B, title1_field, title2_field, cbar_label_field)
+        # Save potential and B-field to file 
+        self.save_data("poisson_wire.txt", Bx, By)
+        # Read in data to get r and A
+        r, A = np.loadtxt('poisson_wire.txt', skiprows=1, usecols=[2, 3], unpack=True, delimiter=',')
+        # Perform the curve fit
+        self.fit_curves_magnetic(r, A, B)
+
+    def task10(self):
+        """
+        Find the optimal value of the relaxation parameter (w), such as to minimise the number of
+        iterations required for convergence in the SOR method. Save results to file (task 10)
+        """
+        print("temp")
 
 
 
@@ -434,19 +512,20 @@ if __name__ == "__main__":
     argparser.add_argument('-L', '--size', type=int, default=49, help="System size (default: 49)")
     argparser.add_argument('-t', '--tolerance', type=float, default=1e-6, help="Accuracy of final solution (default: 1e-6)")
     argparser.add_argument('--monopole', action='store_true', help="Calculate potential due to a single charge at the centre")
-    argparser.add_argument('--task7', action='store_true', help="Plot the potential and electric field due to a monopole from datafile, fit as function of r. (task 7)")
+    argparser.add_argument('--task10', action='store_true', help="Find optimal value of w in SOR method. (task 10)")
     argparser.add_argument('--wire', action='store_true', help="Calculate potential due to a straight wire through the centre")
     argparser.add_argument('-m', '--method', choices=['Jacobi', 'Gauss-Seidel', 'SOR'], default='Jacobi', help="Method for solving Poisson's equation (default: Jacobi)")
     argparser.add_argument('-w', '--relaxation', type=float, default=1.5, help="Relaxation parameter for SOR method (default: 1.5)")
+
     args = argparser.parse_args()
 
     P = Poisson(args.size, args.tolerance, args.method, args.relaxation)
 
     if args.monopole:
         P.monopole()
-    elif args.task7:
-        P.task7()
     elif args.wire:
         P.wire()
+    elif args.task10:
+        P.task10()
     else:
         print("Error: no action input")
