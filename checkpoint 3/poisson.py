@@ -6,7 +6,7 @@ from numba import njit
 from scipy.optimize import curve_fit
 
 @njit
-def Gauss_Seidel_electric(phi, rho, L, dx):
+def Gauss_Seidel_electric(phi, rho, L, dx, _=None):
     """
     Calculate the updated potential using the Gauss-Seidel algorithm.
     
@@ -32,7 +32,7 @@ def Gauss_Seidel_electric(phi, rho, L, dx):
     return phi
 
 @njit
-def Gauss_Seidel_magnetic(phi, rho, L, dx):
+def Gauss_Seidel_magnetic(phi, rho, L, dx, _=None):
     """
     Calculate the updated potential using the Gauss-Seidel algorithm,
     this time for the magnetic problem.
@@ -56,6 +56,72 @@ def Gauss_Seidel_magnetic(phi, rho, L, dx):
                                             + phi[i, j, (k-1) % L]\
                                                 + phi[i, j, (k+1) % L]\
                                                     + dx**2 * rho[i, j, k]) / 6
+    return phi
+
+@njit
+def SOR_electric(phi, rho, L, dx, w):
+    """
+    Calculate the updated potential using the Gauss-Seidel algorithm.
+    (electric problem)
+    
+    Arguments:
+        phi: the current potential
+        rho: the charge density distribution
+        L: system size
+        dx: spatial resolution
+        w: the relaxation parameter
+    
+    Returns:
+        phi: the updated potential
+    """
+    phi_old = phi.copy()
+
+    for i in range(1, L-1):
+        for j in range(1, L-1):
+            for k in range(1, L-1):
+                # Calculate updated phi element using Gauss-Seidel
+                phi_new = (phi[i-1, j, k]\
+                                + phi[i+1, j, k]\
+                                    + phi[i, j-1, k]\
+                                        + phi[i, j+1, k]\
+                                            + phi[i, j, k-1]\
+                                                + phi[i, j, k+1]\
+                                                    + dx**2 * rho[i, j, k]) / 6
+                # Update phi_new using successive over-relaxation
+                phi[i, j, k] = (1 - w) * phi_old[i, j, k] + w * phi_new
+    return phi
+
+@njit
+def SOR_magnetic(phi, rho, L, dx, w):
+    """
+    Calculate the updated potential using the Gauss-Seidel algorithm.
+    (magnetic problem)
+    
+    Arguments:
+        phi: the current potential
+        rho: the charge density distribution
+        L: system size
+        dx: spatial resolution
+        w: the relaxation parameter
+    
+    Returns:
+        phi: the updated potential
+    """
+    phi_old = phi.copy()
+
+    for i in range(1, L-1):
+        for j in range(1, L-1):
+            for k in range(0, L):
+                # Calculate updated phi element using Gauss-Seidel
+                phi_new = (phi[i-1, j, k]\
+                                + phi[i+1, j, k]\
+                                    + phi[i, j-1, k]\
+                                        + phi[i, j+1, k]\
+                                            + phi[i, j, (k-1) % L]\
+                                                + phi[i, j, (k+1) % L]\
+                                                    + dx**2 * rho[i, j, k]) / 6
+                # Update phi_new using successive over-relaxation
+                phi[i, j, k] = (1 - w) * phi_old[i, j, k] + w * phi_new
     return phi
 
 @njit
@@ -110,7 +176,7 @@ def B_field(A, L, dx):
                 left = (j - 1) % L
                 right = (j + 1) % L
                 Bx[i, j] = 0.5 * (A[down, j] - A[up, j]) / dx
-                By[i, j] = -0.5 * (A[i, right] - A[i, left]) /dx
+                By[i, j] = -0.5 * (A[i, right] - A[i, left]) / dx
 
         return Bx, By
 
@@ -142,7 +208,7 @@ class Poisson:
         # Initialise potential
         self.phi = np.zeros((L, L, L))
 
-    def Jacobi(self, old_phi, _=None, __=None, ___=None):
+    def Jacobi(self, old_phi, _=None, __=None, ___=None, ____=None):
         """
         Calculate the updated potential using the Jacobi algorithm.
         
@@ -199,22 +265,6 @@ class Poisson:
                     phi[:, -1, :] = 0
         # Return the updated potential
         return phi
-
-    
-    def SOR(self, phi_old, _=None, __=None, ___=None):
-        """
-        Calculate the updated potential using the SOR algorithm.
-        
-        Arguments:
-            phi: the current potential
-        
-        Returns:
-            the updated potential
-        """
-        phi = phi_old.copy()
-        phi_new = self.Gauss_Seidel(phi, self.rho, self.L, self.dx)
-        delta = phi_new - phi_old
-        return phi_old + self.w * delta
     
     def update(self):
         """
@@ -223,7 +273,7 @@ class Poisson:
         # Obtain updated potential and update phi, increment iters
         phi = self.phi.copy()
         phi_old = self.phi.copy()
-        self.phi = self.alg(phi, self.rho, self.L, self.dx)
+        self.phi = self.alg(phi, self.rho, self.L, self.dx, self.w)
         self.iters += 1
         # Check for convergence
         if np.max(np.abs(self.phi - phi_old)) <= self.tol:
@@ -241,8 +291,9 @@ class Poisson:
         self.rho[self.L//2, self.L//2, self.L//2] = 1
         # Set electric boundary conditions method
         self.boundary_conditions = self.electric_BC
-        # Use electric Gauss-Seidel
+        # Use electric Gauss-Seidel, SOR
         self.Gauss_Seidel = Gauss_Seidel_electric
+        self.SOR = SOR_electric
         # Choose method
         if self.method == 'Jacobi':
             self.alg = self.Jacobi
@@ -326,7 +377,7 @@ class Poisson:
 
         ax1.scatter(r, phi, marker=".", color="orange", label="data")
         ax1.plot(r, phi_Gauss, color="blue", label=r"$1/4\pi r$")
-        ax1.set_xlabel(r'$r$', fontsize=12)
+        ax1.set_xlabel(r'separation from charge $r$', fontsize=12)
         ax1.set_ylabel(r'$\phi$', fontsize=12)
         ax1.set_yscale("log")
         ax1.set_xscale("log")
@@ -335,7 +386,7 @@ class Poisson:
 
         ax2.scatter(r, E, marker=".", color="orange", label="data")
         ax2.plot(r, E_Gauss, color="blue", label=r"$1/4\pi r^2$")
-        ax2.set_xlabel(r'$r$', fontsize=12)
+        ax2.set_xlabel(r'separation from charge $r$', fontsize=12)
         ax2.set_ylabel(r'$|E|$', fontsize=12)
         ax2.set_yscale("log")
         ax2.set_xscale("log")
@@ -375,8 +426,8 @@ class Poisson:
 
         ax1.scatter(r, A, marker=".", color="orange", label="data")
         ax1.plot(r, A_Ampere, color="blue", label=r"$-ln(r)/2\pi + C$")
-        ax1.set_xlabel(r'$r$', fontsize=12)
-        ax1.set_ylabel(r'$A$', fontsize=12)
+        ax1.set_xlabel(r'separation from wire $r$', fontsize=12)
+        ax1.set_ylabel(r'$A_z$', fontsize=12)
         ax1.set_yscale("log")
         ax1.set_xscale("log")
         ax1.set_title("Magnetic potential", fontsize=16)
@@ -384,7 +435,7 @@ class Poisson:
 
         ax2.scatter(r, B, marker=".", color="orange", label="data")
         ax2.plot(r, B_Ampere, color="blue", label=r"$1/2\pi r$")
-        ax2.set_xlabel(r'$r$', fontsize=12)
+        ax2.set_xlabel(r'separation from wire $r$', fontsize=12)
         ax2.set_ylabel(r'$|B|$', fontsize=12)
         ax2.set_yscale("log")
         ax2.set_xscale("log")
@@ -461,8 +512,9 @@ class Poisson:
         self.rho[self.L//2, self.L//2, :] = 1
         # Set magnetic boundary conditions method (periodic along z-axis)
         self.boundary_conditions = self.magnetic_BC
-        # Use magnetic Gauss-Seidel
+        # Use magnetic Gauss-Seidel, SOR
         self.Gauss_Seidel = Gauss_Seidel_magnetic
+        self.SOR = SOR_magnetic
         # Choose method
         if self.method == 'Jacobi':
             self.alg = self.Jacobi
@@ -508,13 +560,14 @@ class Poisson:
         self.rho[self.L//2, self.L//2, self.L//2] = 1
         # Set electric boundary conditions method
         self.boundary_conditions = self.electric_BC
-        # Use electric Gauss-Seidel
+        # Use electric Gauss-Seidel, SOR
         self.Gauss_Seidel = Gauss_Seidel_electric
+        self.SOR = SOR_electric
         # Choose method
         self.alg = self.SOR
 
-        # collect convergence data over different w
-        w_list = np.linspace(1.622, 1.627, 20)
+        # collect convergence data over varying w
+        w_list = np.round(np.linspace(1.8, 1.92, 30), 4)
 
         with open("poisson_task10.txt", 'w') as f:
             f.write("w,iters\n")
@@ -535,19 +588,19 @@ class Poisson:
         # Plot number of iterations vs relaxation parameter
         w, iters = np.loadtxt("poisson_task10.txt", skiprows=1, unpack=True, delimiter=',')
 
-        best_w = np.round(w[np.argmin(iters)], 6)
+        best_w = w[np.argmin(iters)]
+
+        fig = plt.figure(figsize=[10, 8])
         
         plt.plot(w, iters, color='black')
         plt.axvline(best_w, color='black', linestyle='--', label=rf'$\omega_0 =$ {best_w}')
-        plt.xlabel("relaxation parameter", fontsize=16)
-        plt.ylabel("iteration to convergence", fontsize=16)
+        plt.xlabel(r"relaxation parameter $\omega$", fontsize=16)
+        plt.ylabel("iterations to convergence", fontsize=16)
         plt.legend(fontsize=12)
 
         plt.show()
 
                 
-
-
 
 if __name__ == "__main__":
     argparser = argparse.ArgumentParser(description="Poisson equation simulation")

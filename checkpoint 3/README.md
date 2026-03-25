@@ -3,7 +3,7 @@ Date: 06/03/2026
 
 # cahn.py
 
-Simulation of the Cahn-Hilliard equation for liquid-liquid phase separation.
+Code for solving the Cahn-Hilliard equation to simulate liquid-liquid phase separation in a system with periodic boundary conditions.
 
 ## Arguments
     
@@ -61,9 +61,68 @@ python cahn.py --plot
 
 # poisson.py
 
+Iterative solver of Poisson's equation for an electrostatic or magnetic problem with Dirichlet boundary conditions.
+
 ## Arguments
 
+    -L SIZE, --size SIZE  
+        -System size 
+        -default: 49
+
+    -t TOLERANCE, --tolerance TOLERANCE
+        -Accuracy of final solution 
+        -default: 1e-6
+
+    --monopole            
+        -Calculate potential due to a single charge at the centre
+
+    --task10              
+        -Find optimal value of w in SOR method. (task 10)
+
+    --wire                
+        -Calculate potential due to a straight wire through the centre
+
+    -m {Jacobi,Gauss-Seidel,SOR}, --method {Jacobi,Gauss-Seidel,SOR}
+        -Method for solving Poisson's equation 
+        -default: Jacobi
+
+    -w RELAXATION, --relaxation RELAXATION
+        -Relaxation parameter for SOR method 
+        -default: 1.5
+
 ## Usage
+
+Note: all tasks must be executed through the command line
+
+### Solve for the electrostatic potential and electric field due to a monopole, save data for 2D slice to file, compare to Gauss's law (task 7)
+
+```bash
+python poisson.py --monopole
+```
+
+### Task 7 but with custom method, tolerance, and system size
+
+```bash
+python poisson.py --monopole -m Gauss-Seidel -t 0.01 -L 79 
+```
+
+### Solve for the z-component of the magnetic vector potential and magnetic field due to an infinite wire running along the z-axis, save data for 2D slice to file, and compare to Ampere's law (task 9)
+
+```bash
+python poisson.py --wire
+```
+
+### Task 9 but with the SOR method
+
+```bash
+python poisson.py --wire -m SOR -w 1.6
+```
+
+### Find the optimal value of the relaxation parameter such as to minimise the number of iterations required for convergence with the SOR method (task 10)
+
+```bash
+python poisson.py --task10
+```
 
 # Dependencies
 
