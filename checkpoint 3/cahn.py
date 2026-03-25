@@ -183,13 +183,15 @@ class CahnHilliard:
 
         data1 = np.loadtxt(file1, delimiter=',', skiprows=1)
         data2 = np.loadtxt(file2, delimiter=',', skiprows=1)
+        # Infer time step
+        dt = np.round(data1[-1, 0] / len(data1[:, 0]), 6)
 
         plt.figure(figsize=[10, 8])
         plt.plot(data1[:, 0], data1[:, 1], label=r'$\phi_0 = 0.0$')
         plt.plot(data2[:, 0], data2[:, 1], label=r'$\phi_0 = 0.5$')
         plt.xlabel(r'time [$\kappa/Ma^2$]', fontsize=16)
         plt.ylabel(r'free energy [$a$]', fontsize=16)
-        plt.title('Free Energy vs Time for Cahn-Hilliard Simulation', fontsize=16)
+        plt.title(rf'Free Energy vs Time for Cahn-Hilliard Simulation ($\delta t$ = {dt})', fontsize=16)
         plt.legend(fontsize=16)
         plt.show()
 
