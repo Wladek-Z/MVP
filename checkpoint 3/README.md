@@ -118,7 +118,7 @@ python poisson.py --wire
 python poisson.py --wire -m SOR -w 1.6
 ```
 
-### Find the optimal value of the relaxation parameter such as to minimise the number of iterations required for convergence with the SOR method, save raw data to file (task 10)
+### Find the optimal value of the relaxation parameter such as to minimise the number of iterations required for convergence with the SOR method on the electrostatic problem, save raw data to file (task 10)
 
 ```bash
 python poisson.py --task10
