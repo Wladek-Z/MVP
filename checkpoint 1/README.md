@@ -1,3 +1,5 @@
+Mark: 15/15
+
 # ising.py
 
 Ising.py contains the Ising class, which runs simulations of the 2D Ising model (with J = 1). Running Ising.py displays an animation of the time evolution of a specified Ising model system, indefinitely. 
