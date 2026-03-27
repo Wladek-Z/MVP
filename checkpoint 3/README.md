@@ -1,3 +1,7 @@
+Mark: 19/20<br>
+
+* lost 1 mark for doing task 10 on a 3D problem rather than a 2D problem for increased efficiency, same answer.
+
 Name: Wladek Zawadzki<br>	
 UUN: s2280450<br>
 Date: 26/03/2026
