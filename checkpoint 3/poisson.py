@@ -567,7 +567,7 @@ class Poisson:
         self.alg = self.SOR
 
         # collect convergence data over varying w
-        w_list = np.round(np.linspace(1.8, 1.92, 30), 4)
+        w_list = np.round(np.linspace(1.8, 1.92, 50), 4)
 
         with open("poisson_task10.txt", 'w') as f:
             f.write("w,iters\n")
