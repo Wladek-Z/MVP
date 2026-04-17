@@ -15,7 +15,7 @@ class Ising:
         """
         self.L = L
         self.kBT = kBT
-        self.J = 1
+        self.J = 1                                            # Modify coupling constant for different equilibrium states
         self.sweep = L * L                                    # Define a unique unit of time for an LxL system                                         # Keep track of how many sweeps have passed
         self.M = np.empty(0)                                  # Initialise empty list for magnetisation measurements
         self.E = np.empty(0)                                  # Initialise empty list for energy measurements
