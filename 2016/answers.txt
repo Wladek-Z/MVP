@@ -1,0 +1,15 @@
+a. (i)
+
+We expect to see the lattice sites form a checkerboard pattern, where neighbouring spins have opposite signs in equilibrium.
+
+As there are equal numbers of up and down spins in the checkerboard, M should average to 0.
+
+The staggered magnetisation should tend to plus or minus the total number of lattice sites. This is because sgn(i) will be always equal or always opposite to the spin at lattice site i when the system is a perfect checkerboard, as both will alternate with the same frequency.
+
+a. (ii)
+
+We expect the spins to preferrentially align with the magnetic field and for the remaining unaligned spins to spread evenly throughout the lattice, such as to maximise the number of neighbouring spins with the opposite sign.
+
+The magnetisation should be very positive or very negative, depending on the sign of the external magnetic field. However, it should never saturate at plus or minus the total number of lattice sites, as thermal fluctuations will always generate unaligned spins.
+
+Since there is no longer any correlation between position and spin when an external magnetic field is present, we expect the staggered magnetisation to fluctuate around 0.
