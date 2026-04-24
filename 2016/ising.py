@@ -230,7 +230,7 @@ class Ising:
         plt.cla()                                                                                     
         img = plt.imshow(self.S, cmap='plasma', vmin=-1, vmax=1)      
         # Include the parameters and current magnetisation values in the title                    
-        plt.title(f"Ising Model: Antiferromagnet\n $L$ = {self.L}, $k_BT$ = {self.kBT}, $J$ = {self.J}, $h$ = {self.h}\n $M$ = {M}, $M_s$ = {M_s}", fontsize=12)
+        plt.title(f"Ising Model: Antiferromagnet\n $L$ = {self.L}, $k_BT$ = {self.kBT}, $J$ = {self.J}\n $h$ = {self.h}, $M$ = {M}, $M_s$ = {M_s}", fontsize=12)
         plt.axis('off')
         plt.tight_layout()
         # Run 10 sweeps of the algorithm
