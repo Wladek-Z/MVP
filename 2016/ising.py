@@ -144,7 +144,7 @@ def total_E(S, L, J, h):
 class Ising:
     """Class to represent a 2D Ising model"""
 
-    def __init__(self, L, kBT, J, h):
+    def __init__(self, L, kBT, J, h0):
         """
         Constructor method for Ising class.
 
@@ -159,10 +159,16 @@ class Ising:
         # Modify coupling constant for different equilibrium states
         self.J = J              
         # Define external magnetic field
-        self.h = h
+        self.h0 = h0
+        # time-dependent field is initially 0
+        self.h = 0
         # Define a unique unit of time for an LxL system 
+        self.sweep = L * L   
         # Keep track of how many sweeps have passed
-        self.sweep = L * L                                               
+        self.n = 0                
+        # Fix spatial and time periods
+        self.P = 25
+        self.tau = 10000               
         # Initialise empty list for magnetisation measurements                            
         self.M = np.zeros(1000)                     
         # Initialise empty list for staggered magnetisation measurements
@@ -232,6 +238,11 @@ class Ising:
             for j in range(self.sweep):                                       
                 # Update the lattice
                 self.update()    
+            # Increment time
+            self.n += 1
+            
+        # Print the current value of sin(2 pi n / tau)
+        print(f"sin = {np.sin(2 * np.pi * self.n / self.tau)}", end='\r')
 
         return img
 
@@ -239,14 +250,17 @@ class Ising:
         """
         Update the system using Glauber dynamics.
         """
-        #choose random state i
-        i_row = random.randint(0, self.L-1)
-        i_col = random.randint(0, self.L-1)
+        # Choose random state. x and y denote rows and columns, respectively
+        x = random.randint(0, self.L-1)
+        y = random.randint(0, self.L-1)
+        # Calculate current magnetic field
+        self.h = self.h0 * np.cos(2*np.pi*x/self.P) * np.cos(2*np.pi*y/self.P) * np.sin(2 * np.pi * self.n / self.tau) 
         # Calculate energy change upon flipping spin state i
-        dE = delta_E_G(i_row, i_col, self.L, self.S, self.J, self.h)
+        dE = delta_E_G(x, y, self.L, self.S, self.J, self.h)
         # Apply the Metropolis algorithm to decide whether to flip the spin state i
         if metropolis(dE, self.kBT):
-            self.S[i_row, i_col] *= -1
+            # Flip the spin
+            self.S[x, y] *= -1
             # Update total energy whilst avoiding total recalculation
             self.totalE += dE        
 
