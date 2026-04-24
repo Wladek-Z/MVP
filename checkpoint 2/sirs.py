@@ -4,6 +4,79 @@ from matplotlib.animation import FuncAnimation
 import matplotlib.colors as mc
 import argparse
 import random
+from numba import njit
+
+@njit
+def jackknife(I, I_var, L):
+        """
+        Compute the standard error via the jackknife method.
+        
+        Arguments:
+            I: full list of number of infected sites over time
+            I_var: the true variance of the number of infected sites
+            L: system size
+            
+        Returns:
+            jackknife standard error on the variance
+        """
+        I_jack = np.empty(len(I)-1)
+        I_var_jack = np.empty(len(I))
+
+
+        for i in range(len(I)):  
+            for j in range(len(I)-1):                           
+                if j < i:
+                    I_jack[j] = I[j]
+                else:
+                    I_jack[j] = I[j+1]
+
+            I_var_jack[i] = (np.mean(I_jack**2) - np.mean(I_jack)**2) / L**2
+        
+        return np.sqrt(np.sum((I_var_jack - I_var)**2))    
+
+@njit
+def update(old, sweep, L, pS_I, pI_R, pR_S):
+        """
+        Apply the SIRS model updating scheme to edit a single cell.
+
+        Arguments:
+            old: current state of the board
+            sweep: number of updates to perform (one sweep)
+            L: system size
+            pS_I: probability of susceptible cell to become infected
+            pI_R: probability of infected cell to become recovered
+            pR_S: probability of recovered cell to become susceptible
+
+        Returns:
+            new: updated state of the board
+        """
+        # Loop over one sweep
+        for _ in range(sweep):
+            # Copy old board to new board
+            new = old.copy()
+            # Choose a random cell
+            i = random.randint(0, L-1)
+            j = random.randint(0, L-1)
+            # Check state of cell and update accordingly
+            if (old[i, j] == -1) and np.random.binomial(1, pR_S):
+                # Change recovered to susceptible
+                new[i, j] = 1
+            elif (old[i, j] == 0) and np.random.binomial(1, pI_R):
+                # Change infected to recovered
+                new[i, j] = -1
+            elif (old[i, j] == 1) and np.random.binomial(1, pS_I):
+                # Check for any infected nearest neighbours
+                NN = np.array([old[i, (j+1) % L], 
+                            old[i, (j-1) % L], 
+                            old[(i+1) % L, j], 
+                            old[(i-1) % L, j]])
+                if 0 in set(NN):
+                    # Change susceptible to infected
+                    new[i, j] = 0
+            # Update old board to new board for next iteration
+            old = new.copy()
+            
+        return new
 
 class SIRS:
     """Class for simulating the SIRS model on a 2D lattice"""
@@ -100,8 +173,9 @@ class SIRS:
         Run 10 sweeps of the simulation and return the next frame of the animation.
         """
         # Run 10 sweeps of the updating scheme
-        for i in range(10 * self.sweep):                                       
-            self.update()   
+        for i in range(10):                                       
+            old = self.board.copy()
+            self.board = update(old, self.sweep, self.L, self.pS_I, self.pI_R, self.pR_S) 
         # Clear the figure
         plt.cla()      
         # Update the figure                                                         
@@ -164,12 +238,12 @@ class SIRS:
                     I = np.zeros(1000)
                     # Equilibrate
                     for i in range(100):
-                        for j in range(self.sweep):
-                            self.update()
+                        old = self.board.copy()
+                        self.board = update(old, self.sweep, self.L, self.pS_I, self.pI_R, self.pR_S)
                     # Run 1000 sweeps
                     for i in range(1000):
-                        for j in range(self.sweep):
-                            self.update()
+                        old = self.board.copy()
+                        self.board = update(old, self.sweep, self.L, self.pS_I, self.pI_R, self.pR_S)
                         # Count number of infected sites
                         I[i] = np.sum((self.board == 0).astype(int))
                     # Calculate average fraction of infected sites
@@ -184,7 +258,7 @@ class SIRS:
         """
         self.pI_R = 0.5
         self.pR_S = 0.5
-        p_list = np.arange(0.2, 0.51, 0.01)
+        p_list = np.arange(0.2, 0.51, 0.01) 
         p_list = np.round(p_list, 2)
 
         with open(self.filename, 'a') as f:
@@ -199,20 +273,20 @@ class SIRS:
                 I = np.zeros(10000)
                 # Equilibrate
                 for i in range(100):
-                    for j in range(self.sweep):
-                        self.update()
+                    old = self.board.copy()
+                    self.board = update(old, self.sweep, self.L, self.pS_I, self.pI_R, self.pR_S)
                 # Run 10000 sweeps
                 for i in range(10000):
-                    for j in range(self.sweep):
-                        self.update()
+                    old = self.board.copy()
+                    self.board = update(old, self.sweep, self.L, self.pS_I, self.pI_R, self.pR_S)
                     # Count number of infected sites
                     I[i] = np.sum((self.board == 0).astype(int))
                     # Print live progress
                     print(f"Sweep {i+1}/10000", end="\r")
                 # Calculate variance of infected sites
-                I_var = self.I_variance(I, 0)
+                I_var = self.I_variance(I)
                 # Calculate error on the variance
-                I_err = self.jackknife(I, I_var)
+                I_err = jackknife(I, I_var, self.L)
                 # Append data to file
                 f.write(f"{pS_I},{I_var},{I_err}\n")
 
@@ -237,12 +311,12 @@ class SIRS:
                 I = np.zeros(1000)
                 # Equilibrate
                 for i in range(100):
-                    for j in range(self.sweep):
-                        self.update()
+                    old = self.board.copy()
+                    self.board = update(old, self.sweep, self.L, self.pS_I, self.pI_R, self.pR_S)
                 # Run 1000 sweeps
                 for i in range(1000):
-                    for j in range(self.sweep):
-                        self.update()
+                    old = self.board.copy()
+                    self.board = update(old, self.sweep, self.L, self.pS_I, self.pI_R, self.pR_S)
                     # Count number of infected sites
                     I[i] = np.sum((self.board == 0).astype(int))
                     # Print live progress
@@ -253,43 +327,21 @@ class SIRS:
                 print(f"Progress: I = {I_frac}")
                 f.write(f"{f_imm},{I_frac}\n")
 
-    def I_variance(self, I, axis):
+    def I_variance(self, I):
         """
         Calculate the variance of the number of infected sites over time
         
         Arguments:
             I   : list of number of infected sites over time
-            axis: axis along which means should be calculated. 0 for 1d array and 1 for 2d array (Jackknife)
         
         Returns:
             variance of the number of infected sites
         """
         # Calculate mean, mean squared of infected sites
-        mean_I = np.mean(I, axis=axis)
-        mean_I2 = np.mean(I**2, axis=axis)
+        mean_I = np.mean(I)
+        mean_I2 = np.mean(I**2)
         # Return variance
         return (mean_I2 - mean_I**2) / self.L**2
-
-    def jackknife(self, I, I_var):
-        """
-        Compute the standard error via the jackknife method.
-        
-        Arguments:
-            I: full list of number of infected sites over time
-            I_var: the true variance of the number of infected sites
-            
-        Returns:
-            jackknife standard error on the variance
-        """
-        I_jack = [] 
-
-        for i in range(len(I)):                             
-            I_jack.append(np.delete(I, i)) 
-
-        I_jack = np.array(I_jack)
-        I_var_jack = self.I_variance(I_jack, 1)
-        
-        return np.sqrt(np.sum((I_var_jack - I_var)**2))                        
 
 if __name__ == "__main__":
     # Parse command line arguments

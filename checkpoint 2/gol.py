@@ -2,6 +2,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.animation import FuncAnimation
 import argparse
+from numba import njit
 
 class GameOfLife:
     """Class for simulating Conway's Game of Life on a 2D lattice"""

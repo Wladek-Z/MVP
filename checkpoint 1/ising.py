@@ -33,6 +33,7 @@ def delta_E_G(i_row, i_col, L, S, J):
     # Shortcut energy change calculation
     return 2 * J * I_sum                                
 
+@njit
 def delta_E_K(i_row, i_col, j_row, j_col, L, S, J):
     """
     Calculate the energy change upon switching spin states i and j in Kawasaki dynamics.
@@ -70,7 +71,85 @@ def delta_E_K(i_row, i_col, j_row, j_col, L, S, J):
             # Compute contribution due to pair
             J_sum += S[i_row, i_col] * S[k_row, k_col]
     # Calculate total energy change
-    return -2 * J * (I_sum + J_sum)   
+    return -2 * J * (I_sum + J_sum) 
+
+@njit
+def metropolis(dE, kBT):
+        """
+        Use the Metropolis algorithm to decide whether to flip the spin state.
+
+        Arguments:
+            dE: energy change upon flipping the spin state
+            kBT: thermal energy
+        """
+        if dE <= 0:
+            # Always accept energy-lowering flip
+            return True                                      
+        elif random.uniform(0, 1) < np.exp(-dE / kBT):  
+            # Spin flips with probability
+            return True
+        else:
+            # Spin flip is rejected
+            return False  
+
+@njit        
+def total_E(S, L, J):
+        """
+        Calculate the total energy of the system.
+
+        Arguments:
+            S: spin lattice
+            L: system size
+            J: coupling constant
+
+        Returns:
+            total energy of the system
+        """
+        # Initialise energy sum
+        E_sum = 0                                          
+        # Nearest neighbours       
+        NN = [(-1, 0), (1, 0), (0, -1), (0, 1)]                   
+        # Loop over all spins
+        for i in range(L):                                                          
+            for j in range(L):
+                # Loop over nearest neighbours 'k'
+                for drow, dcol in NN:                             
+                    k_row = (i + drow) % L
+                    k_col = (j + dcol) % L
+                    # Add contribution due to pair
+                    E_sum += -S[i, j] * S[k_row, k_col] 
+        # Avoid double counting
+        return J * E_sum / 2 
+
+@njit
+def jackknife(E, n, C, L, kBT):
+        """
+        Compute the standard error on the heat capacity via the jackknife method.
+
+        Arguments:
+            E_array: energy measurements array
+            n: number of data points
+            C: measured heat capacity per spin
+            L: system size
+            kBT: thermal energy
+        
+        Returns:
+            Jackknife standard error on the heat capacity
+        """                       
+        # Initialise empty array for jackknife samples                      
+        C_i = np.zeros(n)                                             
+        # Loop over all data points
+        for i in range(n):                                             
+            # Sample distribution with i-th element removed
+            E_jack = np.delete(E, i)                              
+            # Calculate average energy and average energy squared
+            Ej, Ej2 = np.mean(E_jack), np.mean(np.square(E_jack))                              
+            # Calculate heat capacity for jackknife sample
+            C_jack = (Ej2 - Ej**2) / (L * L * kBT * kBT)                          
+            # append heat capacity for jackknife sample
+            C_i[i] = C_jack                               
+        # Jackknife standard error calculation
+        return np.sqrt(np.sum((C_i - C)**2))  
 
 class Ising:
     """Class to represent a 2D Ising model"""
@@ -93,17 +172,17 @@ class Ising:
         # Keep track of how many sweeps have passed
         self.sweep = L * L                                               
         # Initialise empty list for magnetisation measurements                            
-        self.M = np.empty(0)                           
+        self.M = np.zeros(1000)                          
         # Initialise empty list for energy measurements       
-        self.E = np.empty(0)                                  
+        self.E = np.zeros(1000)                                  
 
         while dynamics not in {'G', 'K'}:
             dynamics = input("Please enter 'G' or 'K' ")
 
         # Initialise random spin configuration
         self.S = np.random.choice([-1, 1], size=(L, L))       
-        # Record initial energy; E_now = "what is the current energy?"
-        self.E_now = self.total_E()                           
+        # Record initial energy
+        self.totalE = total_E(self.S, self.L, self.J)                           
 
         if dynamics == 'G':
             self.update = self.Glauber
@@ -136,9 +215,9 @@ class Ising:
                 # Calculate current magnetisation                  
                 S_sum = np.sum(self.S)                                    
                 # Record current magnetisation                                 
-                self.M = np.append(self.M, S_sum)                         
+                self.M[i//10 - 1] = S_sum                         
                 # Record current energy  
-                self.E = np.append(self.E, self.E_now)             
+                self.E[i//10 - 1] = self.totalE              
                 
     def run_ani(self):
         """
@@ -175,10 +254,10 @@ class Ising:
         # Calculate energy change upon flipping spin state i
         dE = delta_E_G(i_row, i_col, self.L, self.S, self.J)
         # Apply the Metropolis algorithm to decide whether to flip the spin state i
-        if self.metropolis(dE):
+        if metropolis(dE, self.kBT):
             self.S[i_row, i_col] *= -1
             # Update total energy whilst avoiding total recalculation
-            self.E_now = self.E_now + dE        
+            self.totalE = self.totalE + dE        
 
     def Kawasaki(self):
         """
@@ -196,24 +275,10 @@ class Ising:
         # Calculate energy change upon switching spin states i and j
         dE = delta_E_K(i_row, i_col, j_row, j_col, self.L, self.S, self.J)
         # Apply the Metropolis algorithm to decide whether to switch the spin states i and j
-        if self.metropolis(dE):
+        if metropolis(dE, self.kBT):
             self.S[i_row, i_col], self.S[j_row, j_col] = self.S[j_row, j_col], self.S[i_row, i_col]
             # Update total energy while avoiding recalculation
-            self.E_now = self.E_now + dE         
-
-    def metropolis(self, dE):
-        """
-        Use the Metropolis algorithm to decide whether to flip the spin state.
-        """
-        if dE <= 0:
-            # Always accept energy-lowering flip
-            return True                                      
-        elif random.uniform(0, 1) < np.exp(-dE / self.kBT):  
-            # Spin flips with probability
-            return True
-        else:
-            # Spin flip is rejected
-            return False
+            self.totalE = self.totalE + dE        
 
     def avg_M(self, M):
         """
@@ -238,30 +303,7 @@ class Ising:
         Returns:
            susceptibility
         """
-        return (M2 - M**2) / (self.L * self.L * self.kBT)
-    
-    def total_E(self):
-        """
-        Calculate the total energy of the system.
-
-        Returns:
-            total energy of the system
-        """
-        # Initialise energy sum
-        E_sum = 0                                          
-        # Nearest neighbours       
-        NN = [(-1, 0), (1, 0), (0, -1), (0, 1)]                   
-        # Loop over all spins
-        for i in range(self.L):                                                          
-            for j in range(self.L):
-                # Loop over nearest neighbours 'k'
-                for drow, dcol in NN:                             
-                    k_row = (i + drow) % self.L
-                    k_col = (j + dcol) % self.L
-                    # Add contribution due to pair
-                    E_sum += -self.S[i, j] * self.S[k_row, k_col] 
-        # Avoid double counting
-        return self.J * E_sum / 2                                 
+        return (M2 - M**2) / (self.L * self.L * self.kBT)                               
     
     def avg_E(self, E):
         """
@@ -320,7 +362,7 @@ if __name__ == "__main__":
     """Parse command line arguments"""
     parser = argparse.ArgumentParser()
     parser.add_argument('-L', '--size', type=int, default=50, help='System size (default: 50)')
-    parser.add_argument('-T', '--temperature', type=float, default=2, help='Thermal energy (default: 2)')
+    parser.add_argument('-T', '--temperature', type=float, default=1, help='Thermal energy (default: 1)')
     parser.add_argument('-J', '--coupling', type=float, default=1, help='Coupling constant (default: 1)')
     parser.add_argument('-d', '--dynamics', type=str, choices=['G', 'K'], default='G', help="Dynamics type: 'G' for Glauber, 'K' for Kawasaki (default: 'G')")
     args = parser.parse_args()

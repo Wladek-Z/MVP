@@ -4,9 +4,14 @@ from matplotlib import pyplot as plt
 from matplotlib.animation import FuncAnimation
 import argparse
 from numba import njit
+import pandas as pd
+import scienceplots
+
+plt.style.use('science')
+plt.rcParams['text.usetex'] = False
 
 @njit
-def delta_E_G(i_row, i_col, L, S, J):
+def delta_E_G(i_row, i_col, L, S, J, h):
     """
     Calculate the energy change upon flipping spin state i in Glauber dynamics.
 
@@ -32,47 +37,7 @@ def delta_E_G(i_row, i_col, L, S, J):
         # Add contribution due to pair
         I_sum += S[i_row, i_col] * S[k_row, k_col] 
     # Shortcut energy change calculation
-    return 2 * J * I_sum                           
-
-@njit
-def delta_E_K(i_row, i_col, j_row, j_col, L, S, J):
-    """
-    Calculate the energy change upon switching spin states i and j in Kawasaki dynamics.
-
-    Arguments:
-        i_row: position of state i along first dimension
-        i_col: position of state i along second dimension
-        j_row: position of state j along first dimension
-        j_col: position of state j along second dimension
-        L: system size
-        S: spin lattice
-        J: coupling constant
-
-    Returns:
-        energy change upon switching spin states i and j
-        """
-    # Nearest neighbours
-    NN = [(-1, 0), (1, 0), (0, -1), (0, 1)]
-    # Initialise sum over pairs                      
-    I_sum = 0                                                    
-    J_sum = 0                                                   
-    # Loop over nearest neighbours 'k' for each state
-    for drow, dcol in NN:                                        
-        k_row = (i_row + drow) % L
-        k_col = (i_col + dcol) % L
-        # Swapping neighbouring i and j has no effect
-        if [k_row, k_col] != [j_row, j_col]:            
-            # Compute contribution due to pair             
-            I_sum += S[j_row, j_col] * S[k_row, k_col] 
-
-        k_row = (j_row + drow) % L
-        k_col = (j_col + dcol) % L
-        # Swapping neighbouring i and j has no effect
-        if [k_row, k_col] != [i_row, i_col]:                     
-            # Compute contribution due to pair
-            J_sum += S[i_row, i_col] * S[k_row, k_col]
-    # Calculate total energy change
-    return -2 * J * (I_sum + J_sum)   
+    return 2 * (J * I_sum + h * S[i_row, i_col])                       
 
 @njit
 def magnetisation(S, L):
@@ -97,6 +62,85 @@ def magnetisation(S, L):
 
         return M, M_s
 
+@njit
+def metropolis(dE, kBT):
+        """
+        Use the Metropolis algorithm to decide whether to flip the spin state.
+
+        Arguments:
+            dE: energy change upon flipping the spin state
+            kBT: thermal energy
+        """
+        if dE <= 0:
+            # Always accept energy-lowering flip
+            return True                                      
+        elif random.uniform(0, 1) < np.exp(-dE / kBT):  
+            # Spin flips with probability
+            return True
+        else:
+            # Spin flip is rejected
+            return False
+        
+@njit
+def jackknife(E, n, C, L, kBT):
+        """
+        Compute the standard error on the heat capacity via the jackknife method.
+
+        Arguments:
+            E_array: energy measurements array
+            n: number of data points
+            C: measured heat capacity per spin
+            L: system size
+            kBT: thermal energy
+        
+        Returns:
+            Jackknife standard error on the heat capacity
+        """                       
+        # Initialise empty array for jackknife samples                      
+        C_i = np.zeros(n)                                             
+        # Loop over all data points
+        for i in range(n):                                             
+            # Sample distribution with i-th element removed
+            E_jack = np.delete(E, i)                              
+            # Calculate average energy and average energy squared
+            Ej, Ej2 = np.mean(E_jack), np.mean(np.square(E_jack))                              
+            # Calculate heat capacity for jackknife sample
+            C_jack = (Ej2 - Ej**2) / (L * L * kBT * kBT)                          
+            # append heat capacity for jackknife sample
+            C_i[i] = C_jack                               
+        # Jackknife standard error calculation
+        return np.sqrt(np.sum((C_i - C)**2))  
+
+@njit        
+def total_E(S, L, J, h):
+        """
+        Calculate the total energy of the system.
+
+        Arguments:
+            S: spin lattice
+            L: system size
+            J: coupling constant
+            h: external magnetic field
+
+        Returns:
+            total energy of the system
+        """
+        # Initialise energy sum
+        E_sum = 0                                          
+        # Nearest neighbours       
+        NN = [(-1, 0), (1, 0), (0, -1), (0, 1)]                   
+        # Loop over all spins
+        for i in range(L):                                                          
+            for j in range(L):
+                # Loop over nearest neighbours 'k'
+                for drow, dcol in NN:                             
+                    k_row = (i + drow) % L
+                    k_col = (j + dcol) % L
+                    # Add contribution due to pair
+                    E_sum += -S[i, j] * S[k_row, k_col] 
+        # Avoid double counting and add external magnetic field contribution
+        return J * E_sum / 2 - h * np.sum(S)      
+
 class Ising:
     """Class to represent a 2D Ising model"""
 
@@ -120,14 +164,16 @@ class Ising:
         # Keep track of how many sweeps have passed
         self.sweep = L * L                                               
         # Initialise empty list for magnetisation measurements                            
-        self.M = np.empty(0)                           
+        self.M = np.zeros(1000)                     
+        # Initialise empty list for staggered magnetisation measurements
+        self.M_s = np.zeros(1000)     
         # Initialise empty list for energy measurements       
-        self.E = np.empty(0)                       
+        self.E = np.zeros(1000)                       
         # Initialise random spin configuration
         self.S = np.random.choice([-1, 1], size=(L, L))       
-        # Record initial energy; E_now = "what is the current energy?"
-        self.E_now = self.total_E()                           
-
+        # Record initial total energy
+        self.totalE = total_E(self.S, self.L, self.J, self.h)                           
+        # Relic from when the user could choose between Glauber and Kawasaki dynamics
         self.update = self.Glauber
   
     def run(self, t):
@@ -145,21 +191,21 @@ class Ising:
                 self.update()                                       
                                               
         # Run the simulation for t sweeps
-        for i in range(1, t + 1):                       
+        for i in range(1, t+1):                       
             # Perform a sweep of the algorithm            
             for j in range(self.sweep):                       
                 # Update the lattice      
                 self.update()                                       
-            
             # Take measurements every 10 sweeps
-            if i % 10 == 0:                       
-                # Calculate current magnetisation                  
-                S_sum = np.sum(self.S)                                    
-                # Record current magnetisation                                 
-                self.M = np.append(self.M, S_sum)                         
-                # Record current energy  
-                self.E = np.append(self.E, self.E_now)             
-                
+            if i % 10 == 0:  
+               # Append current energy to array
+               self.E[i//10 - 1] = self.totalE                     
+               # Calculate current magnetisation and staggered magnetisation
+               M, M_s = magnetisation(self.S, self.L)
+               # Append magnetisation and staggered magnetisation measurements to arrays
+               self.M[i//10 - 1] = M
+               self.M_s[i//10 - 1] = M_s
+
     def run_ani(self):
         """
         Run the simulation with an animated grid. blue corresponds to S=-1 and yellow corresponds to S=+1.
@@ -197,48 +243,12 @@ class Ising:
         i_row = random.randint(0, self.L-1)
         i_col = random.randint(0, self.L-1)
         # Calculate energy change upon flipping spin state i
-        # Include contribution from external magnetic field h
-        dE = delta_E_G(i_row, i_col, self.L, self.S, self.J) - self.h * self.S[i_row, i_col]
+        dE = delta_E_G(i_row, i_col, self.L, self.S, self.J, self.h)
         # Apply the Metropolis algorithm to decide whether to flip the spin state i
-        if self.metropolis(dE):
+        if metropolis(dE, self.kBT):
             self.S[i_row, i_col] *= -1
             # Update total energy whilst avoiding total recalculation
-            self.E_now = self.E_now + dE        
-
-    def Kawasaki(self):
-        """
-        Update the system using Kawasaki dynamics.
-        """
-        #choose random states i and j
-        i_row = random.randint(0, self.L-1)
-        i_col = random.randint(0, self.L-1)
-        j_row = random.randint(0, self.L-1)
-        j_col = random.randint(0, self.L-1)
-        #continue choosing j state until it is distinct from the i state
-        while ([i_row, i_col] == [j_row, j_col]) or (self.S[i_row, i_col] == self.S[j_row, j_col]):
-            j_row = random.randint(0, self.L-1)
-            j_col = random.randint(0, self.L-1)
-        # Calculate energy change upon switching spin states i and j
-        dE = delta_E_K(i_row, i_col, j_row, j_col, self.L, self.S, self.J)
-        # Apply the Metropolis algorithm to decide whether to switch the spin states i and j
-        if self.metropolis(dE):
-            self.S[i_row, i_col], self.S[j_row, j_col] = self.S[j_row, j_col], self.S[i_row, i_col]
-            # Update total energy while avoiding recalculation
-            self.E_now = self.E_now + dE         
-
-    def metropolis(self, dE):
-        """
-        Use the Metropolis algorithm to decide whether to flip the spin state.
-        """
-        if dE <= 0:
-            # Always accept energy-lowering flip
-            return True                                      
-        elif random.uniform(0, 1) < np.exp(-dE / self.kBT):  
-            # Spin flips with probability
-            return True
-        else:
-            # Spin flip is rejected
-            return False
+            self.totalE += dE        
 
     def avg_M(self, M):
         """
@@ -251,43 +261,7 @@ class Ising:
            average magnetisation, average magnetisation squared
         """
         return np.mean(M), np.mean(np.square(M))
-    
-    def susceptibility(self, M, M2):
-        """
-        Calculate and return the magnetic susceptibility.
 
-        Arguments:
-            M: expectation value of total magnetisation
-           M2: expectation value of total magnetisation squared
-           
-        Returns:
-           susceptibility
-        """
-        return (M2 - M**2) / (self.L * self.L * self.kBT)
-    
-    def total_E(self):
-        """
-        Calculate the total energy of the system.
-
-        Returns:
-            total energy of the system
-        """
-        # Initialise energy sum
-        E_sum = 0                                          
-        # Nearest neighbours       
-        NN = [(-1, 0), (1, 0), (0, -1), (0, 1)]                   
-        # Loop over all spins
-        for i in range(self.L):                                                          
-            for j in range(self.L):
-                # Loop over nearest neighbours 'k'
-                for drow, dcol in NN:                             
-                    k_row = (i + drow) % self.L
-                    k_col = (j + dcol) % self.L
-                    # Add contribution due to pair
-                    E_sum += -self.S[i, j] * self.S[k_row, k_col] 
-        # Avoid double counting and add external magnetic field contribution
-        return self.J * E_sum / 2 - self.h * np.sum(self.S)                          
-    
     def avg_E(self, E):
         """
         Calculate and return average energy and average energy squared.
@@ -296,9 +270,9 @@ class Ising:
            E: energy measurements array
         
         Returns:
-           average energy, average energy squared
+           average energy
         """
-        return np.mean(E), np.mean(np.square(E))
+        return np.mean(E)
     
     def heat_capacity(self, E, E2):
         """
@@ -313,33 +287,113 @@ class Ising:
         """
         return (E2 - E**2) / (self.L * self.L * self.kBT * self.kBT)   
     
-    def jackknife(self, C):
+    def variance(self, M, M2):
         """
-        Compute the standard error on the heat capacity via the jackknife method.
+        Calculate and return the variance of the magnetisation.
 
         Arguments:
-           C: measured heat capacity per spin
-        
+            M: magnetisation measurements array
+            M2: squared magnetisation measurements array
+
         Returns:
-           Jackknife standard error on the heat capacity
+            variance of the magnetisation
         """
-        # Number of data points
-        n = len(self.E)                          
-        # Initialise empty array for jackknife samples                      
-        C_i = np.empty(0)                                              
-        # Loop over all data points
-        for i in range(n):                                             
-            # Sample distribution with i-th element removed
-            E_jack = np.delete(self.E, i)                              
-            # Calculate average energy and average energy squared
-            E, E2 = self.avg_E(E_jack)                                
-            # Calculate heat capacity for jackknife sample
-            C_jack = self.heat_capacity(E, E2)                         
-            # append heat capacity for jackknife sample
-            C_i = np.append(C_i, C_jack)                               
-        # Jackknife standard error calculation
-        return np.sqrt(np.sum((C_i - C)**2))                          
- 
+        return M2 - M**2
+
+def task_c_data(I):
+    """
+    Generate data for task c and write to file. (i) the average and the variance of the
+    magnetisation, (ii) the average and variance of the staggered magnetisation, and (iii)
+    the average of the energy.
+
+    Arguments:
+        I: Ising class instance
+    """ 
+    # Create list of external magnetic fields to probe
+    h_list = np.arange(0, 10.5, 0.5)
+    h_list = np.round(h_list, 1) 
+    # Initialise empty data array
+    data = []
+    # Equilibriate for an additional 900 sweeps on first data point
+    # Note: 100 equilibration sweeps + 't' additional sweeps per 'run' function call
+    I.run(800)
+
+    for h in h_list:
+        # Set new value of external magnetic field
+        print(f"h = {h}")
+        I.h = h
+        # Reset energy and magnetisation arrays
+        I.E = np.zeros(1000)
+        I.M = np.zeros(1000)
+        I.M_s = np.zeros(1000)
+        # Run simulation for 10000 sweeps
+        I.run(10000)
+        # Calculate the average magnetisation, average magnetisation squared
+        M, M2 = I.avg_M(I.M)
+        # Repeat for staggered magnetisation
+        M_s, M_s2 = I.avg_M(I.M_s)
+        # Calculate variance of magnetisation and staggered magnetisation
+        var_M = I.variance(M, M2)
+        var_M_s = I.variance(M_s, M_s2)
+        # Calculate average energy
+        E = I.avg_E(I.E)
+        # Append data to array
+        data.append([h, M, var_M, M_s, var_M_s, E])
+    
+    # Write all data to file
+    df = pd.DataFrame(data, columns=['h', 'M', 'M_var', 'M_s', 'M_s_var', 'E'])
+    df.to_csv('task_c_data.txt', mode='a', index=False, header=True)
+
+def task_c_plot():
+    """
+    Read in and plot the data generated for task c.
+    """
+    df = pd.read_csv('task_c_data.txt')
+
+    # Plot the average of the magnetisation against the external magnetic field
+    fig = plt.figure(figsize=(8, 6))
+    plt.plot(df['h'], df['M'])
+    plt.title('Average magnetisation vs external magnetic field')
+    plt.xlabel('External magnetic field, $h$')
+    plt.ylabel('Average magnetisation, $M$')
+    plt.tight_layout()
+    plt.show()
+
+    # Plot the variance of the magnetisation against the external magnetic field
+    fig = plt.figure(figsize=(8, 6))
+    plt.plot(df['h'], df['M_var'])
+    plt.title('Variance of magnetisation vs external magnetic field')
+    plt.xlabel('External magnetic field, $h$')
+    plt.ylabel('Variance of magnetisation, Var($M$)')
+    plt.tight_layout()
+    plt.show()
+
+    # Plot the average of the staggered magnetisation against the external magnetic field
+    fig = plt.figure(figsize=(8, 6))
+    plt.plot(df['h'], df['M_s'])
+    plt.title('Average staggered magnetisation vs external magnetic field')
+    plt.xlabel('External magnetic field, $h$')
+    plt.ylabel('Average staggered magnetisation, $M_s$')
+    plt.tight_layout()
+    plt.show()
+
+    # Plot the variance of the staggered magnetisation against the external magnetic field
+    fig = plt.figure(figsize=(8, 6))
+    plt.plot(df['h'], df['M_s_var'])
+    plt.title('Variance of staggered magnetisation vs external magnetic field')
+    plt.xlabel('External magnetic field, $h$')
+    plt.ylabel('Variance of staggered magnetisation, Var($M_s$)')
+    plt.tight_layout()
+    plt.show()
+
+    # Plot the average of the energy against the external magnetic field
+    fig = plt.figure(figsize=(8, 6))
+    plt.plot(df['h'], df['E'])
+    plt.title('Average energy vs external magnetic field')
+    plt.xlabel('External magnetic field, $h$')
+    plt.ylabel('Average energy, $E$')
+    plt.tight_layout()
+    plt.show()
 
 if __name__ == "__main__":
     """Parse command line arguments"""
@@ -348,7 +402,17 @@ if __name__ == "__main__":
     parser.add_argument('-T', '--temperature', type=float, default=1, help='Thermal energy (default: 1)')
     parser.add_argument('-J', '--coupling', type=float, default=-1, help='Coupling constant (default: -1)')
     parser.add_argument('-H', '--field', type=float, default=0, help='External magnetic field (default: 0)')
+    parser.add_argument('-t', '--task', type=str, choices=['animation', 'c'], default='animation', help="Task to run: 'animation' for animation, or 'c' for task c (default: 'animation')")
+    parser.add_argument('--collect', action='store_true', help='Collect data for a given task')
+    parser.add_argument('--plot', action='store_true', help='Display plots for a given task')
     args = parser.parse_args()
 
-    I = Ising(args.size, args.temperature, args.coupling, args.field)
-    I.run_ani()  
+    if args.task == 'c':
+        if args.collect:
+            I = Ising(50, 1, -1, 0)
+            task_c_data(I)
+        elif args.plot:
+            task_c_plot()
+    elif args.task == 'animation':
+        I = Ising(args.size, args.temperature, args.coupling, args.field)
+        I.run_ani()  

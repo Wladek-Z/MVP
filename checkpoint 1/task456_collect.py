@@ -54,7 +54,7 @@ def collect_task56(filepath, dynamics):
 
         E, E2 = I.avg_E(I.E)
         C = I.heat_capacity(E, E2)
-        sigma = I.jackknife(C)
+        sigma = I.jackknife(I.E, len(I.E), C, I.L, I.kBT)
         data.append([kBT, E, C, sigma])                     # Append data to array 
 
         print(f"kBT = {kBT}   E = {E}   C = {C}   sigma = {sigma}")     

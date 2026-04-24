@@ -12,7 +12,7 @@ Ising.py contains the Ising class, which runs simulations of the 2D Ising model.
 
     -T, --temperature TEMPERATURE
         -Thermal energy 
-        -Default: 2
+        -Default: 1
 
     -d, --dynamics {G,K}  
         -Dynamics type: 'G' for Glauber, 'K' for Kawasaki 

@@ -13,3 +13,7 @@ We expect the spins to preferrentially align with the magnetic field and for the
 The magnetisation should be very positive or very negative, depending on the sign of the external magnetic field. However, it should never saturate at plus or minus the total number of lattice sites, as thermal fluctuations will always generate unaligned spins.
 
 Since there is no longer any correlation between position and spin when an external magnetic field is present, we expect the staggered magnetisation to fluctuate around 0.
+
+c. 
+
+The peaks in the variance of magnetisation and staggered magnetisation correspond to the phase transition between alignment with the exteral magnetic field in equilibrium at high h, and 'checkerboarding' in equilibrium at low h.
