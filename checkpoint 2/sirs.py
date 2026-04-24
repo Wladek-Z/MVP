@@ -188,30 +188,6 @@ class SIRS:
         # Return image of board for animation
         return img
     
-    def update(self):
-        """
-        Apply the SIRS model updating scheme to edit a single cell.
-        """
-        # Choose a random cell
-        i = random.randint(0, self.L-1)
-        j = random.randint(0, self.L-1)
-        # Check state of cell and update accordingly
-        if (self.board[i, j] == -1) and np.random.binomial(1, self.pR_S):
-            # Change recovered to susceptible
-            self.board[i, j] = 1
-        elif (self.board[i, j] == 0) and np.random.binomial(1, self.pI_R):
-            # Change infected to recovered
-            self.board[i, j] = -1
-        elif (self.board[i, j] == 1) and np.random.binomial(1, self.pS_I):
-            # Check for any infected nearest neighbours
-            NN = np.array([self.board[i, (j+1) % self.L], 
-                           self.board[i, (j-1) % self.L], 
-                           self.board[(i+1) % self.L, j], 
-                           self.board[(i-1) % self.L, j]])
-            if 0 in set(NN):
-                # Change susceptible to infected
-                self.board[i, j] = 0
-
     def task3(self):
         """
         Collect data pertaining to the average fraction of infected sites
