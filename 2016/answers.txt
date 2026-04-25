@@ -17,3 +17,23 @@ Since there is no longer any correlation between position and spin when an exter
 c. 
 
 The peaks in the variance of magnetisation and staggered magnetisation correspond to the phase transition between alignment with the exteral magnetic field in equilibrium at high h, and 'checkerboarding' in equilibrium at low h.
+
+d. (i)
+
+The lattice shows alternating patches of alignment with the magnetic field, depending on the compound sign of the cosine terms in h(x, y, n). These patches are seperated by strips of zero magnetic field, where the lattice resorts back to the checkerboard.
+
+d. (ii)
+
+When the sine term is zero, the entire external magnetic field is zero, too. Hence, we observe that the checkerboard pattern occupies the whole lattice uninterrupted, except for rare thermal fluctuations.
+
+d. (iii)
+
+The lattice shows the same pattern as in case (i), except now the order of alignment of the patches has flipped in comparison. This is due to the sine term swapping signs, which swaps the sign of h(x, y, n). 
+
+e.
+
+For P = 25, the staggered magnetisation is clearly periodic in time, and hence produces a clean profile when plotted against the field, which is also periodic in time. There is a maximum in staggered magnetisation at sin = 0, which corresponds to h = 0, and what we observed in part a. 
+
+For P = 10, the periodicity of the staggered magnetisation is broken, and hence takes on both positive and negative extrema. This is reflected in the plot against field, where there are two values of staggered magnetisation manifesting for zero field. As for P = 25, the amplitude of the staggered magnetisation is lowest when the field is at a maximum, near the edges of the plot.
+
+The observations may be explained by noting that the size of thermal fluctuations is significant relative to the size of emergent patches in the P = 10 case, leading to more randomness, but not for the P = 25 case.

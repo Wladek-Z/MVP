@@ -4,74 +4,122 @@ from matplotlib import pyplot as plt
 from matplotlib.animation import FuncAnimation
 import argparse
 from numba import njit
+import scienceplots
+
+plt.style.use('science')
+plt.rcParams['text.usetex'] = False
 
 @njit
-def delta_E_G(i_row, i_col, L, S, J):
+def Glauber(sweep, L, S, J, kBT):
     """
-    Calculate the energy change upon flipping spin state i in Glauber dynamics.
+    Run a sweep of the update procedure using Glauber dynamics.
 
     Arguments:
-        i_row: position of state i along first dimension
-        i_col: position of state i along second dimension
+        sweep: length of one sweep
         L: system size
         S: spin lattice
         J: coupling constant
+        kBT: the thermal energy
 
     Returns:
-        energy change upon flipping spin state i
+        S_new: the updated spin lattice
+        dE: the energy change
     """
-    # Nearest neighbours in 2 dimensions
-    NN = [(-1, 0), (1, 0), (0, -1), (0, 1)]       
-    # Initialise sum over pairs           
-    I_sum = 0                                                
-    # Loop over nearest neighbours 'k'
-    for drow, dcol in NN:                                    
-        k_row = (i_row + drow) % L
-        k_col = (i_col + dcol) % L
-        # Add contribution due to pair
-        I_sum += S[i_row, i_col] * S[k_row, k_col] 
-    # Shortcut energy change calculation
-    return 2 * J * I_sum                                
+    # Initialise net energy change over one sweep
+    dE_total = 0
+    for i in range(sweep):
+        # Copy the spin lattice
+        S_new = S.copy()
+        # Choose random state. x and y denote rows and columns, respectively
+        x = random.randint(0, L-1)
+        y = random.randint(0, L-1)
+        
+        # Nearest neighbours in 2 dimensions
+        NN = [(-1, 0), (1, 0), (0, -1), (0, 1)]       
+        # Initialise sum over pairs           
+        I_sum = 0                                                
+        # Loop over nearest neighbours 'k'
+        for dx, dy in NN:                                    
+            xk = (x + dx) % L
+            yk = (y + dy) % L
+            # Add contribution due to pair
+            I_sum += S_new[x, y] * S_new[xk, yk] 
+        # Shortcut energy change calculation
+        dE = 2 * (J * I_sum)
+
+        # Apply the Metropolis algorithm to decide whether to flip the spin state i
+        if metropolis(dE, kBT):
+            # Flip the spin
+            S_new[x, y] *= -1
+            S = S_new.copy()
+            # Update the net energy change
+            dE_total += dE
+
+    return S_new, dE_total
 
 @njit
-def delta_E_K(i_row, i_col, j_row, j_col, L, S, J):
+def Kawasaki(sweep, L, S, J, kBT):
     """
-    Calculate the energy change upon switching spin states i and j in Kawasaki dynamics.
+    Run a sweep of the update procedure using Kawasaki dynamics.
 
     Arguments:
-        i_row: position of state i along first dimension
-        i_col: position of state i along second dimension
-        j_row: position of state j along first dimension
-        j_col: position of state j along second dimension
+        sweep: length of one sweep
         L: system size
         S: spin lattice
         J: coupling constant
+        kBT: the thermal energy
 
     Returns:
-        energy change upon switching spin states i and j
-        """
-    # Nearest neighbours
-    NN = [(-1, 0), (1, 0), (0, -1), (0, 1)]
-    # Initialise sum over pairs                      
-    I_sum = 0                                                    
-    J_sum = 0                                                   
-    # Loop over nearest neighbours 'k' for each state
-    for drow, dcol in NN:                                        
-        k_row = (i_row + drow) % L
-        k_col = (i_col + dcol) % L
-        # Swapping neighbouring i and j has no effect
-        if [k_row, k_col] != [j_row, j_col]:            
-            # Compute contribution due to pair             
-            I_sum += S[j_row, j_col] * S[k_row, k_col] 
+        S_new: the updated spin lattice
+        dE: the energy change
+    """
+    # Initialise net energy change over one sweep
+    dE_total = 0
+    for i in range(sweep):
+        # Copy the spin lattice
+        S_new = S.copy()
+        #choose random states i and j
+        xi = random.randint(0, L-1)
+        yi = random.randint(0, L-1)
+        xj = random.randint(0, L-1)
+        yj = random.randint(0, L-1)
+        #continue choosing j state until it is distinct from the i state
+        while ([xi, yi] == [xj, yj]) or (S_new[xi, yi] == S_new[xj, yj]):
+            xj = random.randint(0, L-1)
+            yj = random.randint(0, L-1)
 
-        k_row = (j_row + drow) % L
-        k_col = (j_col + dcol) % L
-        # Swapping neighbouring i and j has no effect
-        if [k_row, k_col] != [i_row, i_col]:                     
-            # Compute contribution due to pair
-            J_sum += S[i_row, i_col] * S[k_row, k_col]
-    # Calculate total energy change
-    return -2 * J * (I_sum + J_sum) 
+        # Nearest neighbours
+        NN = [(-1, 0), (1, 0), (0, -1), (0, 1)]
+        # Initialise sum over pairs                      
+        I_sum = 0                                                    
+        J_sum = 0                                                   
+        # Loop over nearest neighbours 'k' for each state
+        for dx, dy in NN:                                        
+            xk = (xi + dx) % L
+            yk = (yi + dy) % L
+            # Swapping neighbouring i and j has no effect
+            if [xk, yk] != [xj, yj]:            
+                # Compute contribution due to pair             
+                I_sum += S_new[xj, yj] * S_new[xk, yk] 
+
+            xk = (xj + dx) % L
+            yk = (yj + dy) % L
+            # Swapping neighbouring i and j has no effect
+            if [xk, yk] != [xi, yi]:                     
+                # Compute contribution due to pair
+                J_sum += S_new[xi, yi] * S_new[xk, yk]
+        # Calculate total energy change
+        dE = -2 * J * (I_sum + J_sum) 
+
+        # Apply the Metropolis algorithm to decide whether to switch the spin states i and j
+        if metropolis(dE, kBT):
+            # Swap the spin states i and j
+            S_new[xi, yi], S_new[xj, yj] = S_new[xj, yj], S_new[xi, yi]
+            S = S_new.copy()
+            # Update net energy change
+            dE_total += dE    
+
+    return S_new, dE_total
 
 @njit
 def metropolis(dE, kBT):
@@ -121,6 +169,7 @@ def total_E(S, L, J):
         # Avoid double counting
         return J * E_sum / 2 
 
+
 @njit
 def jackknife(E, n, C, L, kBT):
         """
@@ -136,20 +185,22 @@ def jackknife(E, n, C, L, kBT):
         Returns:
             Jackknife standard error on the heat capacity
         """                       
-        # Initialise empty array for jackknife samples                      
-        C_i = np.zeros(n)                                             
+        # Initialise empty array for jackknife samples 
+        E_jack = np.empty(n-1)                     
+        C_jack = np.empty(n)  
         # Loop over all data points
-        for i in range(n):                                             
+        for i in range(n):
             # Sample distribution with i-th element removed
-            E_jack = np.delete(E, i)                              
-            # Calculate average energy and average energy squared
-            Ej, Ej2 = np.mean(E_jack), np.mean(np.square(E_jack))                              
-            # Calculate heat capacity for jackknife sample
-            C_jack = (Ej2 - Ej**2) / (L * L * kBT * kBT)                          
-            # append heat capacity for jackknife sample
-            C_i[i] = C_jack                               
+            for j in range(n-1):                           
+                if j < i:
+                    E_jack[j] = E[j]
+                else:
+                    E_jack[j] = E[j+1]                         
+            # Calculate and append the heat capacity for the jackknife sample
+            C_jack[i] = (np.mean(np.square(E_jack)) - np.mean(E_jack)**2) / (L*L*kBT*kBT)                                            
         # Jackknife standard error calculation
-        return np.sqrt(np.sum((C_i - C)**2))  
+        return np.sqrt(np.sum((C_jack - C)**2)) 
+
 
 class Ising:
     """Class to represent a 2D Ising model"""
@@ -172,9 +223,9 @@ class Ising:
         # Keep track of how many sweeps have passed
         self.sweep = L * L                                               
         # Initialise empty list for magnetisation measurements                            
-        self.M = np.zeros(1000)                          
+        self.M = np.empty(1000)                          
         # Initialise empty list for energy measurements       
-        self.E = np.zeros(1000)                                  
+        self.E = np.empty(1000)                                  
 
         while dynamics not in {'G', 'K'}:
             dynamics = input("Please enter 'G' or 'K' ")
@@ -185,9 +236,9 @@ class Ising:
         self.totalE = total_E(self.S, self.L, self.J)                           
 
         if dynamics == 'G':
-            self.update = self.Glauber
+            self.update = Glauber
         else:
-            self.update = self.Kawasaki
+            self.update = Kawasaki
   
     def run(self, t):
         """
@@ -199,16 +250,18 @@ class Ising:
         # Equilibriate the system
         for i in range(100):                           
             # Perform a sweep of the algorithm             
-            for j in range(self.sweep):                         
-                # Update the lattice    
-                self.update()                                       
+            S_old = self.S.copy()                                                             
+            self.S, dE = self.update(self.sweep, self.L, S_old, self.J, self.kBT)
+            # Update total energy
+            self.totalE += dE                                       
                                               
         # Run the simulation for t sweeps
         for i in range(1, t + 1):                       
-            # Perform a sweep of the algorithm            
-            for j in range(self.sweep):                       
-                # Update the lattice      
-                self.update()                                       
+            # Perform a sweep of the algorithm             
+            S_old = self.S.copy()                                                             
+            self.S, dE = self.update(self.sweep, self.L, S_old, self.J, self.kBT)
+            # Update total energy
+            self.totalE += dE                                        
             
             # Take measurements every 10 sweeps
             if i % 10 == 0:                       
@@ -223,7 +276,7 @@ class Ising:
         """
         Run the simulation with an animated grid. blue corresponds to S=-1 and yellow corresponds to S=+1.
         """
-        fig, ax = plt.subplots()
+        fig, ax = plt.subplots(figsize=(6, 6))
         ani = FuncAnimation(fig, self.frame, cache_frame_data=False)
         plt.show()
     
@@ -232,53 +285,20 @@ class Ising:
         Run ten sweeps of the simulation using Glauber or Kawasaki dynamics and update the image.
         """
         # Clear the axis
-        plt.cla()                                                                                     
-        img = plt.imshow(self.S, cmap='plasma', vmin=-1, vmax=1)                          
+        plt.cla()                                       
         plt.title(f"Ising Model: {self.update.__name__} dynamics \n $L$ = {self.L}, $k_BT$ = {self.kBT}, $J$ = {self.J}")
         plt.axis('off')
         # Run 10 sweeps of the algorithm
         for i in range(10):                                                                           
-            for j in range(self.sweep):                                       
-                # Update the lattice
-                self.update()                                                                         
-        
+            # Perform a sweep of the algorithm             
+            S_old = self.S.copy()                                                             
+            self.S, dE = self.update(self.sweep, self.L, S_old, self.J, self.kBT)
+            # Update total energy
+            self.totalE += dE  
+        # Update the image                                                         
+        img = plt.imshow(self.S, cmap='plasma', vmin=-1, vmax=1)                                                                      
         return img
-
-    def Glauber(self):
-        """
-        Update the system using Glauber dynamics.
-        """
-        #choose random state i
-        i_row = random.randint(0, self.L-1)
-        i_col = random.randint(0, self.L-1)
-        # Calculate energy change upon flipping spin state i
-        dE = delta_E_G(i_row, i_col, self.L, self.S, self.J)
-        # Apply the Metropolis algorithm to decide whether to flip the spin state i
-        if metropolis(dE, self.kBT):
-            self.S[i_row, i_col] *= -1
-            # Update total energy whilst avoiding total recalculation
-            self.totalE = self.totalE + dE        
-
-    def Kawasaki(self):
-        """
-        Update the system using Kawasaki dynamics.
-        """
-        #choose random states i and j
-        i_row = random.randint(0, self.L-1)
-        i_col = random.randint(0, self.L-1)
-        j_row = random.randint(0, self.L-1)
-        j_col = random.randint(0, self.L-1)
-        #continue choosing j state until it is distinct from the i state
-        while ([i_row, i_col] == [j_row, j_col]) or (self.S[i_row, i_col] == self.S[j_row, j_col]):
-            j_row = random.randint(0, self.L-1)
-            j_col = random.randint(0, self.L-1)
-        # Calculate energy change upon switching spin states i and j
-        dE = delta_E_K(i_row, i_col, j_row, j_col, self.L, self.S, self.J)
-        # Apply the Metropolis algorithm to decide whether to switch the spin states i and j
-        if metropolis(dE, self.kBT):
-            self.S[i_row, i_col], self.S[j_row, j_col] = self.S[j_row, j_col], self.S[i_row, i_col]
-            # Update total energy while avoiding recalculation
-            self.totalE = self.totalE + dE        
+          
 
     def avg_M(self, M):
         """
@@ -329,33 +349,7 @@ class Ising:
             heat capacity
         """
         return (E2 - E**2) / (self.L * self.L * self.kBT * self.kBT)   
-    
-    def jackknife(self, C):
-        """
-        Compute the standard error on the heat capacity via the jackknife method.
-
-        Arguments:
-           C: measured heat capacity per spin
-        
-        Returns:
-           Jackknife standard error on the heat capacity
-        """
-        # Number of data points
-        n = len(self.E)                          
-        # Initialise empty array for jackknife samples                      
-        C_i = np.empty(0)                                              
-        # Loop over all data points
-        for i in range(n):                                             
-            # Sample distribution with i-th element removed
-            E_jack = np.delete(self.E, i)                              
-            # Calculate average energy and average energy squared
-            E, E2 = self.avg_E(E_jack)                                
-            # Calculate heat capacity for jackknife sample
-            C_jack = self.heat_capacity(E, E2)                         
-            # append heat capacity for jackknife sample
-            C_i = np.append(C_i, C_jack)                               
-        # Jackknife standard error calculation
-        return np.sqrt(np.sum((C_i - C)**2))                          
+                          
  
 
 if __name__ == "__main__":

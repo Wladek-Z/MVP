@@ -11,35 +11,6 @@ plt.style.use('science')
 plt.rcParams['text.usetex'] = False
 
 @njit
-def delta_E_G(i_row, i_col, L, S, J, h):
-    """
-    Calculate the energy change upon flipping spin state i in Glauber dynamics.
-
-    Arguments:
-        i_row: position of state i along first dimension
-        i_col: position of state i along second dimension
-        L: system size
-        S: spin lattice
-        J: coupling constant
-        h: external magnetic field
-
-    Returns:
-        energy change upon flipping spin state i
-    """
-    # Nearest neighbours in 2 dimensions
-    NN = [(-1, 0), (1, 0), (0, -1), (0, 1)]       
-    # Initialise sum over pairs           
-    I_sum = 0                                                
-    # Loop over nearest neighbours 'k'
-    for drow, dcol in NN:                                    
-        k_row = (i_row + drow) % L
-        k_col = (i_col + dcol) % L
-        # Add contribution due to pair
-        I_sum += S[i_row, i_col] * S[k_row, k_col] 
-    # Shortcut energy change calculation
-    return 2 * (J * I_sum + h * S[i_row, i_col])                       
-
-@njit
 def magnetisation(S, L):
         """
         Calculate and return the magnetisation and staggered magnetisation.
@@ -81,36 +52,6 @@ def metropolis(dE, kBT):
             # Spin flip is rejected
             return False
         
-@njit
-def jackknife(E, n, C, L, kBT):
-        """
-        Compute the standard error on the heat capacity via the jackknife method.
-
-        Arguments:
-            E_array: energy measurements array
-            n: number of data points
-            C: measured heat capacity per spin
-            L: system size
-            kBT: thermal energy
-        
-        Returns:
-            Jackknife standard error on the heat capacity
-        """                       
-        # Initialise empty array for jackknife samples                      
-        C_i = np.zeros(n)                                             
-        # Loop over all data points
-        for i in range(n):                                             
-            # Sample distribution with i-th element removed
-            E_jack = np.delete(E, i)                              
-            # Calculate average energy and average energy squared
-            Ej, Ej2 = np.mean(E_jack), np.mean(np.square(E_jack))                              
-            # Calculate heat capacity for jackknife sample
-            C_jack = (Ej2 - Ej**2) / (L * L * kBT * kBT)                          
-            # append heat capacity for jackknife sample
-            C_i[i] = C_jack                               
-        # Jackknife standard error calculation
-        return np.sqrt(np.sum((C_i - C)**2))  
-
 @njit        
 def total_E(S, L, J, h):
         """
@@ -141,10 +82,68 @@ def total_E(S, L, J, h):
         # Avoid double counting and add external magnetic field contribution
         return J * E_sum / 2 - h * np.sum(S)      
 
+@njit
+def Glauber(sweep, L, h0, P, tau, n, S, J, kBT, new_field):
+    """
+    Run a sweep of the update procedure using Glauber dynamics.
+
+    Arguments:
+        sweep: length of one sweep
+        L: system size
+        h0: amplitude of external magnetic field
+        P: spatial period of magnetic field
+        tau: temporal period of magnetic field
+        n: number of timesteps elapsed
+        S: spin lattice
+        J: coupling constant
+        kBT: the thermal energy
+        new_field: whether to use the space/time-dependent magnetic field (True/False)
+
+    Returns:
+        S_new: the updated spin lattice
+        dE: the energy change
+    """
+    # Initialise net energy change over one sweep
+    dE_total = 0
+    for i in range(sweep):
+        # Copy the spin lattice
+        S_new = S.copy()
+        # Choose random state. x and y denote rows and columns, respectively
+        x = random.randint(0, L-1)
+        y = random.randint(0, L-1)
+        # Calculate current magnetic field
+        if new_field:
+            h = h0 * np.cos(2*np.pi*x/P) * np.cos(2*np.pi*y/P) * np.sin(2*np.pi*n/tau) 
+        else:
+            h = h0
+        
+        # Nearest neighbours in 2 dimensions
+        NN = [(-1, 0), (1, 0), (0, -1), (0, 1)]       
+        # Initialise sum over pairs           
+        I_sum = 0                                                
+        # Loop over nearest neighbours 'k'
+        for dx, dy in NN:                                    
+            kx = (x + dx) % L
+            ky = (y + dy) % L
+            # Add contribution due to pair
+            I_sum += S_new[x, y] * S_new[kx, ky] 
+        # Shortcut energy change calculation
+        dE = 2 * (J * I_sum + h * S_new[x, y])
+
+        # Apply the Metropolis algorithm to decide whether to flip the spin state i
+        if metropolis(dE, kBT):
+            # Flip the spin
+            S_new[x, y] *= -1
+            S = S_new.copy()
+            # Update the net energy change
+            dE_total += dE
+
+    return S_new, dE_total
+
 class Ising:
     """Class to represent a 2D Ising model"""
 
-    def __init__(self, L, kBT, J, h0):
+    def __init__(self, L, kBT, J, h0, P):
         """
         Constructor method for Ising class.
 
@@ -153,6 +152,7 @@ class Ising:
             kBT: thermal energy (J=1)
             J:  coupling constant
             h: external magnetic field
+            P: spatial period
         """
         self.L = L
         self.kBT = kBT
@@ -167,50 +167,64 @@ class Ising:
         # Keep track of how many sweeps have passed
         self.n = 0                
         # Fix spatial and time periods
-        self.P = 25
+        self.P = P
         self.tau = 10000               
         # Initialise empty list for magnetisation measurements                            
-        self.M = np.zeros(1000)                     
+        self.M = np.empty(1000)                     
         # Initialise empty list for staggered magnetisation measurements
-        self.M_s = np.zeros(1000)     
+        self.M_s = np.empty(1000)     
         # Initialise empty list for energy measurements       
-        self.E = np.zeros(1000)                       
+        self.E = np.empty(1000)        
+        # Initialise empty list to record time
+        self.timestep = np.empty(1000)               
         # Initialise random spin configuration
         self.S = np.random.choice([-1, 1], size=(L, L))       
         # Record initial total energy
         self.totalE = total_E(self.S, self.L, self.J, self.h)                           
         # Relic from when the user could choose between Glauber and Kawasaki dynamics
-        self.update = self.Glauber
+        self.update = Glauber
   
-    def run(self, t):
+    def run(self, t, new_field=True, freq=10, equ=100):
         """
         Run the simulation for t sweeps.
 
         Arguments:
            t: number of sweeps for which to run the simulation
+           new_field: whether to use the space/time-dependent magnetic field (True/False)
+           freq: frequency of data collection
+           equ: number of equilibration sweeps
         """
-        # Equilibriate the system
-        for i in range(100):                           
+        # Equilibrate the system
+        for i in range(equ):                           
             # Perform a sweep of the algorithm             
-            for j in range(self.sweep):                         
-                # Update the lattice    
-                self.update()                                       
+            S_old = self.S.copy()                                                                         
+            self.S, dE = self.update(self.sweep, self.L, self.h0, self.P, self.tau, self.n, S_old, self.J, self.kBT, new_field)
+            # Update total energy
+            self.totalE += dE
+            # Increment time
+            self.n += 1                                     
                                               
         # Run the simulation for t sweeps
         for i in range(1, t+1):                       
             # Perform a sweep of the algorithm            
-            for j in range(self.sweep):                       
-                # Update the lattice      
-                self.update()                                       
-            # Take measurements every 10 sweeps
-            if i % 10 == 0:  
+            S_old = self.S.copy()                                                                         
+            self.S, dE = self.update(self.sweep, self.L, self.h0, self.P, self.tau, self.n, S_old, self.J, self.kBT, new_field)
+            # Update total energy
+            self.totalE += dE     
+            # Increment time
+            self.n += 1
+
+            # Take measurements every freq sweeps
+            if i % freq == 0:  
                # Append current energy to array
-               self.E[i//10 - 1] = self.totalE                     
+               self.E[i//freq - 1] = self.totalE                     
                # Calculate current magnetisation and staggered magnetisation
                M, M_s = magnetisation(self.S, self.L)
                # Append magnetisation and staggered magnetisation measurements to arrays
-               self.M[i//10 - 1] = M
-               self.M_s[i//10 - 1] = M_s
+               self.M[i//freq - 1] = M
+               self.M_s[i//freq - 1] = M_s
+               # Record current time
+               self.timestep[i//freq - 1] = self.n
 
     def run_ani(self):
         """
@@ -230,39 +244,22 @@ class Ising:
         plt.cla()                                                                                     
         img = plt.imshow(self.S, cmap='plasma', vmin=-1, vmax=1)      
         # Include the parameters and current magnetisation values in the title                    
-        plt.title(f"Ising Model: Antiferromagnet\n $L$ = {self.L}, $k_BT$ = {self.kBT}, $J$ = {self.J}\n $h$ = {self.h}, $M$ = {M}, $M_s$ = {M_s}", fontsize=12)
+        plt.title(f"Ising Model: Antiferromagnet\n $L$ = {self.L}, $k_BT$ = {self.kBT}, $J$ = {self.J}, $h_0$ = {self.h0}\n $M$ = {M}, $M_s$ = {M_s}", fontsize=12)
         plt.axis('off')
         plt.tight_layout()
         # Run 10 sweeps of the algorithm
-        for i in range(10):                                                                           
-            for j in range(self.sweep):                                       
-                # Update the lattice
-                self.update()    
+        for i in range(10):  
+            S_old = self.S.copy()                                                                         
+            self.S, dE = self.update(self.sweep, self.L, self.h0, self.P, self.tau, self.n, S_old, self.J, self.kBT, True)
+            # Update total energy
+            self.totalE += dE
             # Increment time
             self.n += 1
             
         # Print the current value of sin(2 pi n / tau)
         print(f"sin = {np.sin(2 * np.pi * self.n / self.tau)}", end='\r')
 
-        return img
-
-    def Glauber(self):
-        """
-        Update the system using Glauber dynamics.
-        """
-        # Choose random state. x and y denote rows and columns, respectively
-        x = random.randint(0, self.L-1)
-        y = random.randint(0, self.L-1)
-        # Calculate current magnetic field
-        self.h = self.h0 * np.cos(2*np.pi*x/self.P) * np.cos(2*np.pi*y/self.P) * np.sin(2 * np.pi * self.n / self.tau) 
-        # Calculate energy change upon flipping spin state i
-        dE = delta_E_G(x, y, self.L, self.S, self.J, self.h)
-        # Apply the Metropolis algorithm to decide whether to flip the spin state i
-        if metropolis(dE, self.kBT):
-            # Flip the spin
-            self.S[x, y] *= -1
-            # Update total energy whilst avoiding total recalculation
-            self.totalE += dE        
+        return img       
 
     def avg_M(self, M):
         """
@@ -330,18 +327,18 @@ def task_c_data(I):
     data = []
     # Equilibriate for an additional 900 sweeps on first data point
     # Note: 100 equilibration sweeps + 't' additional sweeps per 'run' function call
-    I.run(800)
+    I.run(800, False)
 
     for h in h_list:
         # Set new value of external magnetic field
         print(f"h = {h}")
         I.h = h
         # Reset energy and magnetisation arrays
-        I.E = np.zeros(1000)
-        I.M = np.zeros(1000)
-        I.M_s = np.zeros(1000)
+        I.E = np.empty(1000)
+        I.M = np.empty(1000)
+        I.M_s = np.empty(1000)
         # Run simulation for 10000 sweeps
-        I.run(10000)
+        I.run(10000, False)
         # Calculate the average magnetisation, average magnetisation squared
         M, M2 = I.avg_M(I.M)
         # Repeat for staggered magnetisation
@@ -409,6 +406,74 @@ def task_c_plot():
     plt.tight_layout()
     plt.show()
 
+def task_d_data():
+    """
+    Generate data for task d and write to file. Measure value of maximal field strength over time
+    and the instantaneous staggered magnetisation over time.
+    """
+    # Collect data for P = 25
+    I_25 = Ising(50, 1, -1, 10, 25)
+    # Collect data over 1000 sweeps
+    I_25.run(20000, True, 20, 1000)
+    # Save data to file
+    data_25 = {
+        't': I_25.timestep,
+        'max_h': I_25.h0 * np.sin(2*np.pi*I_25.timestep/I_25.tau),
+        'M_s': I_25.M_s
+    }
+    df_25 = pd.DataFrame(data_25)
+    df_25.to_csv('task_d_data_P_25.txt', index=False, header=True)
+
+    # Collect data for P = 10
+    I_10 = Ising(50, 1, -1, 10, 10)
+    # Collect data over 1000 sweeps
+    I_10.run(20000, True, 20, 1000)
+    # Save data to file
+    data_10 = {
+        't': I_10.timestep,
+        'max_h': I_10.h0 * np.sin(2*np.pi*I_10.timestep/I_10.tau),
+        'M_s': I_10.M_s
+    }
+    df_10 = pd.DataFrame(data_10)
+    df_10.to_csv('task_d_data_P_10.txt', index=False, header=True)
+
+
+def task_d_plot():
+    """
+    Read in and plot the data generated for task d.
+    """
+    df_25 = pd.read_csv('task_d_data_P_25.txt')
+    df_10 = pd.read_csv('task_d_data_P_10.txt')
+
+    # Plot the maximal field strength and the staggered magnetisation over time for P = 25
+    fig, ax = plt.subplots(1, 2, figsize=(12, 6))
+    fig.suptitle(f"$P$ = 25")
+    ax[0].plot(df_25['t'], df_25['M_s'])
+    ax[0].set_title('Staggered magnetisation vs time')
+    ax[0].set_xlabel('Timestep, $n$')
+    ax[0].set_ylabel(r'Staggered magnetisation, $M_s$')
+    ax[1].scatter(df_25['max_h'], df_25['M_s'], marker='.', s=10)
+    ax[1].set_title('Staggered magnetisation vs maximal field strength')
+    ax[1].set_xlabel(r'Maximal field strength, $h = h_0 \sin(2\pi n/\tau)$')
+    ax[1].set_ylabel('Staggered magnetisation, $M_s$')
+    plt.tight_layout()
+    plt.show()
+
+    # Plot the maximal field strength and the staggered magnetisation over time for P = 10
+    fig, ax = plt.subplots(1, 2, figsize=(12, 6))
+    fig.suptitle(f"$P$ = 10")
+    ax[0].plot(df_10['t'], df_10['M_s'])
+    ax[0].set_title('Staggered magnetisation vs time')
+    ax[0].set_xlabel('Timestep, $n$')
+    ax[0].set_ylabel(r'Staggered magnetisation, $M_s$')
+    ax[1].scatter(df_10['max_h'], df_10['M_s'], marker='.', s=10)
+    ax[1].set_title('Staggered magnetisation vs maximal field strength')
+    ax[1].set_xlabel(r'Maximal field strength, $h = h_0 \sin(2\pi n/\tau)$')
+    ax[1].set_ylabel('Staggered magnetisation, $M_s$')
+    plt.tight_layout()
+    plt.show()
+
+
 if __name__ == "__main__":
     """Parse command line arguments"""
     parser = argparse.ArgumentParser()
@@ -416,17 +481,23 @@ if __name__ == "__main__":
     parser.add_argument('-T', '--temperature', type=float, default=1, help='Thermal energy (default: 1)')
     parser.add_argument('-J', '--coupling', type=float, default=-1, help='Coupling constant (default: -1)')
     parser.add_argument('-H', '--field', type=float, default=0, help='External magnetic field (default: 0)')
-    parser.add_argument('-t', '--task', type=str, choices=['animation', 'c'], default='animation', help="Task to run: 'animation' for animation, or 'c' for task c (default: 'animation')")
+    parser.add_argument('-P', '--spatialperiod', type=int, default=25, help='Spatial period for space/time-dependent external magnetic field (default: 25)')
+    parser.add_argument('-t', '--task', type=str, choices=['animation', 'c', 'd'], default='animation', help="Task to run: 'animation' for animation, 'c' for task c, or 'd' for task d (default: 'animation')")
     parser.add_argument('--collect', action='store_true', help='Collect data for a given task')
     parser.add_argument('--plot', action='store_true', help='Display plots for a given task')
     args = parser.parse_args()
 
     if args.task == 'c':
         if args.collect:
-            I = Ising(50, 1, -1, 0)
+            I = Ising(50, 1, -1, 0, args.spatialperiod)
             task_c_data(I)
         elif args.plot:
             task_c_plot()
+    elif args.task == 'd':
+        if args.collect:
+            task_d_data()
+        elif args.plot:
+            task_d_plot()
     elif args.task == 'animation':
-        I = Ising(args.size, args.temperature, args.coupling, args.field)
+        I = Ising(args.size, args.temperature, args.coupling, args.field, args.spatialperiod)
         I.run_ani()  

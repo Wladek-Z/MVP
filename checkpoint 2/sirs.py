@@ -308,7 +308,7 @@ class SIRS:
         Calculate the variance of the number of infected sites over time
         
         Arguments:
-            I   : list of number of infected sites over time
+            I: list of number of infected sites over time
         
         Returns:
             variance of the number of infected sites
