@@ -22,13 +22,62 @@ Ising.py contains the Ising class, which runs simulations of the 2D Ising model 
         -Default: -1
 
     -H, --field FIELD     
-        -External magnetic field 
+        -External magnetic field
         -Default: 0
+
+    -P, --spatialperiod SPATIALPERIOD
+            -Spatial period for space/time-dependent external magnetic field 
+            -Default: 25
+
+    -t, --task {animation,c,d}
+        -Task to run: 'animation' for animation, 'c' for task c, or 'd' for task d 
+        -Default: 'animation'
+
+    --collect             
+        -Collect data for a given task
+
+    --plot                
+        -Display plots for a given task
 
 ## Usage
 
 The program should be executed through the terminal. Example usage is shown below.
 
+### Run default simulation with animation (no field)
+
+```bash
+$ python ising.py
+```
+
+### Run simulation with animation and time-dependent field, choosing custom values of h0 and P
+
+```bash
+$ python ising.py -H 10 -P 20
+```
+
+### Collect the data for task c
+
+```bash
+$ python ising.py -t c --collect
+```
+
+### Plot the data for task c
+
+```bash
+$ python ising.py -t c --plot
+```
+
+### Collect the data for task d
+
+```bash
+$ python ising.py -t d --collect
+```
+
+### Plot the data for task d
+
+```bash
+$ python ising.py -t d --plot
+```
 
 # Package Dependencies
 

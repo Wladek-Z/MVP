@@ -32,7 +32,7 @@ The lattice shows the same pattern as in case (i), except now the order of align
 
 e.
 
-For P = 25, the staggered magnetisation is clearly periodic in time, and hence produces a clean profile when plotted against the field, which is also periodic in time. There is a maximum in staggered magnetisation at sin = 0, which corresponds to h = 0, and what we observed in part a. 
+For P = 25, the fluctuations in staggered magnetisation are clearly periodic in time, and hence produces a clean profile when plotted against the field, which is also periodic in time. There is a maximum in staggered magnetisation at sin = 0, which corresponds to h = 0, and what we observed in part a. The average staggered magnetisation appears to be increasing as the system tends towards equilibrium, and this is reflected in the plot against field, where there are multiple values of staggered magnetisation per value of field.
 
 For P = 10, the periodicity of the staggered magnetisation is broken, and hence takes on both positive and negative extrema. This is reflected in the plot against field, where there are two values of staggered magnetisation manifesting for zero field. As for P = 25, the amplitude of the staggered magnetisation is lowest when the field is at a maximum, near the edges of the plot.
 
