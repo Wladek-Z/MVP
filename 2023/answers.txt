@@ -1,0 +1,5 @@
+b.
+
+The system forms a three-layered swirling pattern, resembling a grid of spirals that 'melt' at the edges (see figure swirls.png). Since the code is deterministic and each component follows the same update procedure, the total number of R, P, and S sites is conserved as they continually migrate towards their corresponding 'weaker' neighbours.
+
+The graph shows a square wave of R in time. The width of the square waves is variable but strictly periodic, corresponding to the swirl under different stages of growth.
