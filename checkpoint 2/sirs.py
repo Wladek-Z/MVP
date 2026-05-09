@@ -37,7 +37,7 @@ def jackknife(I, I_var, L):
 @njit
 def update(old, sweep, L, pS_I, pI_R, pR_S):
         """
-        Apply the SIRS model updating scheme to edit a single cell.
+        Apply a sweep of the SIRS model update scheme.
 
         Arguments:
             old: current state of the board

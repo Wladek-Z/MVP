@@ -92,6 +92,7 @@ class RockPaperScissors:
         ani = FuncAnimation(fig, self.update, cache_frame_data=False, interval=100)
 
         img = plt.imshow(self.board, cmap=self.cmap, vmin=0, vmax=2)
+        plt.title("Rock Paper Scissors")
         # Define discrete boundaries for cmap/colorbar
         boundaries = np.linspace(0, 2, 4)
         # Create colorbar
