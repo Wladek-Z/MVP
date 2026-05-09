@@ -1,7 +1,3 @@
-Mark: 14.5/15
-
-* lost 0.5 marks for not listing dependencies in README
-
 # gol.py
 
 Contains the GameOfLife class, for running simulations of Conway's Game of Life.

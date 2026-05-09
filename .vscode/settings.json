@@ -1,5 +1,7 @@
 {
     "python.REPL.enableREPLSmartSend": false,
     "python-envs.defaultPackageManager": "ms-python.python:pip",
-    "python-envs.defaultEnvManager": "ms-python.python:venv"
+    "python-envs.defaultEnvManager": "ms-python.python:system",
+    "python.analysis.autoImportCompletions": false,
+    "python.analysis.typeCheckingMode": "off"
 }

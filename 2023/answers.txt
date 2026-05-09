@@ -2,4 +2,18 @@ b.
 
 The system forms a three-layered swirling pattern, resembling a grid of spirals that 'melt' at the edges (see figure swirls.png). Since the code is deterministic and each component follows the same update procedure, the total number of R, P, and S sites is conserved as they continually migrate towards their corresponding 'weaker' neighbours.
 
-The graph shows a square wave of R in time. The width of the square waves is variable but strictly periodic, corresponding to the swirl under different stages of growth.
+The graph shows a square wave of R in time (see R_states.png). The width of the square waves is variable but strictly periodic, corresponding to the swirl under different stages of growth.
+
+d.
+
+(see figure task_d.png)
+
+At low values of p3, scissors are unlikely to turn into rocks, and hence we expect the rock phase to die out. This is indeed observed in both fraction and variance graphs, which are 0 for low p3. 
+
+At some point, there is a transition from the minority phase completely dying out to persisting, which is associated with a sharp peak in the variance. Following this transition, the fraction of the minority phase continues to grow, and variance drops to 0 again, since the behaviour becomes more consistent.
+
+e.
+
+(see figure task_e.png)
+
+The heat map is nearly symmetric in p2 and p3, but we observe a non-zero average minority fraction for lower p3 than p2. This is because the high value of p1 slighly favours the persistence of scissors over paper. We also see fluctuations near the edges of the non-zero average minority fraction area, which is expected due to the high degree of variance at the transition.
