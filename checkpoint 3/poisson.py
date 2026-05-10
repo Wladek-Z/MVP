@@ -4,6 +4,10 @@ from matplotlib.animation import FuncAnimation
 import argparse
 from numba import njit
 from scipy.optimize import curve_fit
+import scienceplots
+
+plt.style.use('science')
+plt.rcParams['text.usetex'] = False
 
 @njit
 def Gauss_Seidel_electric(phi, rho, L, dx, _=None):
@@ -180,14 +184,23 @@ def B_field(A, L, dx):
 
         return Bx, By
 
-
+def func(r, a, b):
+    """
+    General function to fit via curve fitting.
+    
+    Arguments:
+        r: x data
+        a: prefactor
+        b: power
+    """
+    return a * r ** b
 
 class Poisson:
     """
     Class containing simulation for solving Poisson's equation.
     For convenience, set dx = episilon = 1.
     """
-    def __init__(self, L, tol, method, w):
+    def __init__(self, L, tol, method, w, task):
         """
         Let the potential follow the Dirichlet boundary condition with phi = 0.
 
@@ -196,6 +209,7 @@ class Poisson:
             tol: accuracy of final solution
             method: method for solving Poisson's equation
             w: relaxation parameter for SOR method
+            task: task for simulation
         """
         # Initialise parameters
         self.L         = L
@@ -207,6 +221,17 @@ class Poisson:
         self.dx = 1
         # Initialise potential
         self.phi = np.zeros((L, L, L))
+        # Choose task for simulation
+        if task == 'monopole':
+            self.run = self.monopole
+        elif task == 'wire':
+            self.run = self.wire
+        elif task == '7':
+            self.run = self.task7
+        elif task == '9':
+            self.run = self.task9
+        elif task == '10':
+            self.run = self.task10
 
     def Jacobi(self, old_phi, _=None, __=None, ___=None, ____=None):
         """
@@ -294,6 +319,7 @@ class Poisson:
         # Use electric Gauss-Seidel, SOR
         self.Gauss_Seidel = Gauss_Seidel_electric
         self.SOR = SOR_electric
+
         # Choose method
         if self.method == 'Jacobi':
             self.alg = self.Jacobi
@@ -308,8 +334,8 @@ class Poisson:
 
         # Take slice through middle of potential for plot
         slice = self.phi[:, :, self.L//2]
-        Ex, Ey = E_field(slice, self.L, self.dx)
-        E = np.sqrt(Ex**2 + Ey**2)
+        self.Ex, self.Ey = E_field(slice, self.L, self.dx)
+        self.E = np.sqrt(self.Ex**2 + self.Ey**2)
 
         # Choose titles and colour bar labels for plotting
         title_pot = "Electrostatic Potential"
@@ -321,13 +347,7 @@ class Poisson:
         # Plot the electrostatic potential
         self.plot_potential(slice, title_pot, cbar_label_pot)
         # Plot the electric field
-        self.plot_field(Ex, Ey, E, title1_field, title2_field, cbar_label_field)
-        # Save potential and E-field to file 
-        self.save_data("poisson_monopole.txt", Ex, Ey)
-        # Read in data to get r and phi
-        r, phi = np.loadtxt('poisson_monopole.txt', skiprows=1, usecols=[2, 3], unpack=True, delimiter=',')
-        # Perform the curve fit
-        self.fit_curves_electric(r, phi, E)
+        self.plot_field(self.Ex, self.Ey, self.E, title1_field, title2_field, cbar_label_field)
 
     def save_data(self, filename, Fx, Fy):
         """
@@ -346,6 +366,22 @@ class Poisson:
                     # Calculate distance to monopole
                     r = np.linalg.norm([((self.L // 2) - j) * self.dx, ((self.L // 2) - i) * self.dx])
                     f.write(f"{i},{j},{r},{slice[i, j]},{Fx[i, j]},{Fy[i, j]}\n")
+
+    def curve_fitter(self, r, y):
+        """
+        Curve fit function for a general power law.
+        
+        Arguments:
+            r: x data
+            y: y data
+            
+        Returns:
+            fitted prefactor, fitted power
+        """
+        # Fit data
+        params, pcov = curve_fit(func, r, y)
+        # return a and b
+        return params[0], params[1]
 
     def fit_curves_electric(self, r, phi, E):
         """
@@ -372,26 +408,39 @@ class Poisson:
         phi_Gauss = 1 / (4 * np.pi * r)
         E_Gauss = 1 / (4 * np.pi * r**2)
 
+        # Fit curves
+        a_phi, b_phi = self.curve_fitter(r, phi)
+        a_field, b_field = self.curve_fitter(r, E)
+        phi_fit = func(r, a_phi, b_phi)
+        E_fit = func(r, a_field, b_field)
+        # Round values for display
+        a_phi = np.round(a_phi, 6)
+        b_phi = np.round(b_phi, 6)
+        a_field = np.round(a_field, 6)
+        b_field = np.round(b_field, 6)
+
         # Plot the data
-        fig, (ax1, ax2) = plt.subplots(1, 2, figsize=[18, 8])
+        fig, (ax1, ax2) = plt.subplots(1, 2, figsize=[14, 6])
 
         ax1.scatter(r, phi, marker=".", color="orange", label="data")
-        ax1.plot(r, phi_Gauss, color="blue", label=r"$1/4\pi r$")
+        ax1.plot(r, phi_Gauss, color="blue", label=r"$\sim r^{-1}$")
+        ax1.plot(r, phi_fit, color="red", label=rf"${{{a_phi}}}r^{{{b_phi}}}$")
         ax1.set_xlabel(r'separation from charge $r$', fontsize=12)
         ax1.set_ylabel(r'$\phi$', fontsize=12)
         ax1.set_yscale("log")
         ax1.set_xscale("log")
         ax1.set_title("Electrostatic potential", fontsize=16)
-        ax1.legend(loc="upper right", fontsize=12)
+        ax1.legend(loc="lower left", fontsize=12)
 
         ax2.scatter(r, E, marker=".", color="orange", label="data")
-        ax2.plot(r, E_Gauss, color="blue", label=r"$1/4\pi r^2$")
+        ax2.plot(r, E_Gauss, color="blue", label=r"$\sim r^{-2}$")
+        ax2.plot(r, E_fit, color="red", label=rf"${{{a_field}}}r^{{{b_field}}}$")
         ax2.set_xlabel(r'separation from charge $r$', fontsize=12)
         ax2.set_ylabel(r'$|E|$', fontsize=12)
         ax2.set_yscale("log")
         ax2.set_xscale("log")
         ax2.set_title("Electric field strength", fontsize=16)
-        ax2.legend(loc="upper right", fontsize=12)
+        ax2.legend(loc="lower left", fontsize=12)
 
         plt.show()
 
@@ -421,26 +470,41 @@ class Poisson:
         A_Ampere =  np.log(r0 / r) / (2 * np.pi)
         B_Ampere = 1 / (2 * np.pi * r)
 
+        # Fit curves
+        func2 = lambda r, a, b: a * np.log(r) + b
+        A_params, pcov = curve_fit(func2, r, A)
+        a_A, b_A = A_params[0], A_params[1]
+        a_B, b_B = self.curve_fitter(r, B)
+        A_fit = func2(r, a_A, b_A)
+        B_fit = func(r, a_A, b_B)
+        # Round values for display
+        a_A = np.round(a_A, 6)
+        b_A = np.round(b_A, 6)
+        a_B = np.round(a_B, 6)
+        b_B = np.round(b_B, 6)
+
         # Plot the data
-        fig, (ax1, ax2) = plt.subplots(1, 2, figsize=[18, 8])
+        fig, (ax1, ax2) = plt.subplots(1, 2, figsize=[14, 6])
 
         ax1.scatter(r, A, marker=".", color="orange", label="data")
-        ax1.plot(r, A_Ampere, color="blue", label=r"$-ln(r)/2\pi + C$")
+        ax1.plot(r, A_Ampere, color="blue", label=r"$\sim ln(r)$")
+        ax1.plot(r, A_fit, color="red", label=rf"${{{a_A}}}ln(r) + {{{b_A}}}$")
         ax1.set_xlabel(r'separation from wire $r$', fontsize=12)
         ax1.set_ylabel(r'$A_z$', fontsize=12)
         ax1.set_yscale("log")
         ax1.set_xscale("log")
         ax1.set_title("Magnetic potential", fontsize=16)
-        ax1.legend(loc="upper right", fontsize=12)
+        ax1.legend(loc="lower left", fontsize=12)
 
         ax2.scatter(r, B, marker=".", color="orange", label="data")
-        ax2.plot(r, B_Ampere, color="blue", label=r"$1/2\pi r$")
+        ax2.plot(r, B_Ampere, color="blue", label=r"$\sim r^{-1}$")
+        ax2.plot(r, B_fit, color="red", label=fr"${{{a_B}}}r^{{{b_B}}}$")
         ax2.set_xlabel(r'separation from wire $r$', fontsize=12)
         ax2.set_ylabel(r'$|B|$', fontsize=12)
         ax2.set_yscale("log")
         ax2.set_xscale("log")
         ax2.set_title("Magnetic field strength", fontsize=16)
-        ax2.legend(loc="upper right", fontsize=12)
+        ax2.legend(loc="lower left", fontsize=12)
 
         plt.show()
 
@@ -453,7 +517,7 @@ class Poisson:
             title: desired title of the plot
             cbar_label: desired label for the colour bar
         """
-        fig, ax = plt.subplots(figsize=[10, 8])
+        fig, ax = plt.subplots(figsize=[8, 6])
         img = plt.imshow(slice, cmap='plasma', origin='lower')
 
         plt.title(title, fontsize = 16)
@@ -477,7 +541,7 @@ class Poisson:
             title2: title of magnitude plot
             cbar_label: desired colour bar label
         """
-        fig, (ax1, ax2) = plt.subplots(1, 2, figsize=[18, 8])
+        fig, (ax1, ax2) = plt.subplots(1, 2, figsize=[14, 6])
 
         if title1 == "Magnetic field vector":
             scale = 0.8
@@ -499,6 +563,7 @@ class Poisson:
         cbar = plt.colorbar(img, fraction=0.046, pad=0.04)
         cbar.set_label(cbar_label, size=12)
 
+        plt.tight_layout()
         plt.show()
 
     
@@ -515,6 +580,7 @@ class Poisson:
         # Use magnetic Gauss-Seidel, SOR
         self.Gauss_Seidel = Gauss_Seidel_magnetic
         self.SOR = SOR_magnetic
+
         # Choose method
         if self.method == 'Jacobi':
             self.alg = self.Jacobi
@@ -529,8 +595,8 @@ class Poisson:
 
         # Take slice through middle of potential for plot
         slice = self.phi[:, :, self.L//2]
-        Bx, By = B_field(slice, self.L, self.dx)
-        B = np.sqrt(Bx**2 + By**2)
+        self.Bx, self.By = B_field(slice, self.L, self.dx)
+        self.B = np.sqrt(self.Bx**2 + self.By**2)
 
         # Choose titles and colour bar labels for plotting
         title_pot = r'Magnetic Potential ($z$-component)'
@@ -542,13 +608,35 @@ class Poisson:
         # Plot the magnetic potential
         self.plot_potential(slice, title_pot, cbar_label_pot)
         # Plot the magnetic field
-        self.plot_field(Bx, By, B, title1_field, title2_field, cbar_label_field)
+        self.plot_field(self.Bx, self.By, self.B, title1_field, title2_field, cbar_label_field)
+
+    def task7(self):
+        """
+        Solve for the potential due to a single cahrge at the centre, save to file, and fit curves.
+        """
+        # Run monopole calculation
+        self.monopole()
+
+        # Save potential and E-field to file 
+        self.save_data("poisson_monopole.txt", self.Ex, self.Ey)
+        # Read in data to get r and phi
+        r, phi = np.loadtxt('poisson_monopole.txt', skiprows=1, usecols=[2, 3], unpack=True, delimiter=',')
+        # Perform the curve fit
+        self.fit_curves_electric(r, phi, self.E)
+
+    def task9(self):
+        """
+        Solve for the potential due to a single wire through the centre, save to file, and fit curves.
+        """
+        # Run wire calculation
+        self.wire()
+        
         # Save potential and B-field to file 
-        self.save_data("poisson_wire.txt", Bx, By)
+        self.save_data("poisson_wire.txt", self.Bx, self.By)
         # Read in data to get r and A
         r, A = np.loadtxt('poisson_wire.txt', skiprows=1, usecols=[2, 3], unpack=True, delimiter=',')
         # Perform the curve fit
-        self.fit_curves_magnetic(r, A, B)
+        self.fit_curves_magnetic(r, A, self.B)
 
     def task10(self):
         """
@@ -605,22 +693,12 @@ class Poisson:
 if __name__ == "__main__":
     argparser = argparse.ArgumentParser(description="Poisson equation simulation")
     argparser.add_argument('-L', '--size', type=int, default=49, help="System size (default: 49)")
-    argparser.add_argument('-t', '--tolerance', type=float, default=1e-6, help="Accuracy of final solution (default: 1e-6)")
-    argparser.add_argument('--monopole', action='store_true', help="Calculate potential due to a single charge at the centre")
-    argparser.add_argument('--task10', action='store_true', help="Find optimal value of w in SOR method. (task 10)")
-    argparser.add_argument('--wire', action='store_true', help="Calculate potential due to a straight wire through the centre")
+    argparser.add_argument('-tol', '--tolerance', type=float, default=1e-6, help="Accuracy of final solution (default: 1e-6)")
+    argparser.add_argument('-t', '--task', choices=['monopole', 'wire', '7', '9', '10'], default='monopole', help="Choose which task to perform (default: monopole)")
     argparser.add_argument('-m', '--method', choices=['Jacobi', 'Gauss-Seidel', 'SOR'], default='Jacobi', help="Method for solving Poisson's equation (default: Jacobi)")
     argparser.add_argument('-w', '--relaxation', type=float, default=1.5, help="Relaxation parameter for SOR method (default: 1.5)")
 
     args = argparser.parse_args()
 
-    P = Poisson(args.size, args.tolerance, args.method, args.relaxation)
-
-    if args.monopole:
-        P.monopole()
-    elif args.wire:
-        P.wire()
-    elif args.task10:
-        P.task10()
-    else:
-        print("Error: no action input")
+    P = Poisson(args.size, args.tolerance, args.method, args.relaxation, args.task)
+    P.run()

@@ -3,6 +3,10 @@ import matplotlib.pyplot as plt
 from matplotlib.animation import FuncAnimation
 import argparse
 from numba import njit
+import scienceplots
+
+plt.style.use('science')
+plt.rcParams['text.usetex'] = False
 
 @njit
 def laplacian(x, L):
@@ -209,9 +213,9 @@ if __name__ == "__main__":
     
     CH = CahnHilliard(args.size, args.initialphi, args.timestep)
 
-    if args.data:
-        CH.task5()
-    elif args.animation:
+    if args.animation:
         CH.animation()
+    elif args.data:
+        CH.task5()
     elif args.plot:
         CH.plot()

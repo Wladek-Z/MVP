@@ -68,67 +68,85 @@ Iterative solver of Poisson's equation for an electrostatic or magnetic problem 
 
     -L SIZE, --size SIZE  
         -System size 
+        -type: integer
         -default: 49
 
-    -t TOLERANCE, --tolerance TOLERANCE
+    -tol TOLERANCE, --tolerance TOLERANCE
         -Accuracy of final solution 
+        -type: float
         -default: 1e-6
 
-    --monopole            
-        -Calculate potential due to a single charge at the centre
-
-    --task10              
-        -Find optimal value of w in SOR method. (task 10)
-
-    --wire                
-        -Calculate potential due to a straight wire through the centre
+    -t, --task {monopole,wire,7,9,10}
+        -Choose which task to perform 
+        -type: string
+        -default: monopole
 
     -m {Jacobi,Gauss-Seidel,SOR}, --method {Jacobi,Gauss-Seidel,SOR}
         -Method for solving Poisson's equation 
+        -type: string
         -default: Jacobi
 
     -w RELAXATION, --relaxation RELAXATION
         -Relaxation parameter for SOR method 
+        -type: float
         -default: 1.5
 
 ## Usage
 
-Note: all tasks must be executed through the command line
+All tasks should be executed through the command terminal. Example usage is shown below.
+
+### Solve for the electrostatic potential and electric field due to a monopole
+
+```bash
+python poisson.py -t monopole
+```
 
 ### Solve for the electrostatic potential and electric field due to a monopole, save data for 2D slice to file, compare to Gauss's law (task 7)
 
 ```bash
-python poisson.py --monopole
+python poisson.py -t 7
 ```
 
 ### Task 7 but with custom method, tolerance, and system size
 
 ```bash
-python poisson.py --monopole -m Gauss-Seidel -t 0.01 -L 79 
+python poisson.py -t 7 -m Gauss-Seidel -tol 0.01 -L 79 
+```
+
+### Solve for the magnetic potential and field due to a wire
+
+```bash
+python poisson.py -t wire
 ```
 
 ### Solve for the z-component of the magnetic vector potential and magnetic field due to an infinite wire running along the z-axis, save data for 2D slice to file, and compare to Ampere's law (task 9)
 
 ```bash
-python poisson.py --wire
+python poisson.py -t 9
 ```
 
 ### Task 9 but with the SOR method
 
 ```bash
-python poisson.py --wire -m SOR -w 1.6
+python poisson.py -t 9 -m SOR -w 1.6
 ```
 
 ### Find the optimal value of the relaxation parameter such as to minimise the number of iterations required for convergence with the SOR method on the electrostatic problem, save raw data to file (task 10)
 
 ```bash
-python poisson.py --task10
+python poisson.py -t 10
 ```
 
 # Dependencies
 
-* Python (3.12.13)
-* numba (0.64.0)
-* numpy (1.26.4)
-* matplotlib (3.10.8)
-* scipy (1.17.1)
+All code has been developed and tested using Python 3.14.3. Additional package dependencies are listed below.
+
+* numpy 2.4.4
+* numba 0.65.0
+* matplotlib 3.10.8
+* pandas 3.0.2
+
+Optional package dependencies:
+
+* scienceplots 2.2.1 
+    - only required to reproduce plots
