@@ -3,6 +3,11 @@ import matplotlib.pyplot as plt
 from matplotlib.animation import FuncAnimation
 import argparse
 from numba import njit
+import scienceplots
+
+plt.style.use('science')
+plt.rcParams['text.usetex'] = False
+
 
 class GameOfLife:
     """Class for simulating Conway's Game of Life on a 2D lattice"""
@@ -51,7 +56,7 @@ class GameOfLife:
             self.board = np.zeros((self.L, self.L))
             self.board[(self.L // 2 - 1):(self.L // 2 + 2), (self.L // 2 - 1):(self.L // 2 + 2)] = glider
 
-        fig, ax = plt.subplots()
+        fig, ax = plt.subplots(figsize=[6, 6])
         ani = FuncAnimation(fig, self.update, cache_frame_data=False, interval=100)
         plt.show()
 

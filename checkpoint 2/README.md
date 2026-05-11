@@ -189,3 +189,18 @@ $ python sirs_analysis.py -t 4 -f sirs_task4.txt
 ```bash
 $ python sirs_analysis.py -t 5 -f sirs_task5.txt
 ```
+
+# Dependencies 
+
+
+All code has been developed and tested using Python 3.14.3. Additional package dependencies are listed below.
+
+* numpy 2.4.4
+* numba 0.65.0
+* matplotlib 3.10.8
+* pandas 3.0.2
+
+Optional package dependencies:
+
+* scienceplots 2.2.1 
+    - only required to reproduce plots

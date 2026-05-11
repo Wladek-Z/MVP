@@ -1,0 +1,18 @@
+1.
+
+Update move (i) samples configurations while conserving c because swapping the sign of 0 (He3) results in 0, and swapping the sign of +/- 1 results in -/+ 1, both of which are He4, hence never changing the fraction occupied by a species of molecule.
+
+Update move (ii) also samples configurations while conserving c because swapping a pair of sites can only rearrange the molecules that already occupy the lattice. It is unable to create a new molecule of a certain species, or destroy one, without cancelling this action out at another site.
+
+3. a. (normal fluid/mixed)
+
+The dynamics appear random, with all spins uniformly distributed throughout the lattice.
+
+3. b. (superfluid/mixed)
+
+The system forms distinct patches of spin = +/- 1 (He4), with the He3 molecules uniformly distributed throughout. Eventually, one of the spins dominates over the other, such that the +/- 1 spins align on average. Furthermore, thermal fluctuations give rise to a uniform, but low density, distribution of unaligned spins.
+
+3. c. (superfluid/demixed)
+
+The system fully phase separates into two regions where the +/- 1 spins are aligned on average, with the He3 molecules uniformly distributed throughout.
+

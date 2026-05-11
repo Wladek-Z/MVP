@@ -5,6 +5,10 @@ import matplotlib.colors as mc
 import argparse
 import random
 from numba import njit
+import scienceplots
+
+plt.style.use('science')
+plt.rcParams['text.usetex'] = False
 
 @njit
 def jackknife(I, I_var, L):
@@ -149,14 +153,14 @@ class SIRS:
         # Create custom cmap
         colours = ['black', 'blue', 'red', 'white']
         self.cmap = mc.ListedColormap(colours)
-        # Define discrete boundaries for cmap/colorbar
-        boundaries = np.linspace(-2, 1, 5)
         # Create figure and image
-        fig, ax = plt.subplots(figsize=[10, 8])
+        fig, ax = plt.subplots(figsize=[6, 6])
         img = plt.imshow(self.board, cmap=self.cmap, vmin=-2, vmax=1)
         plt.title('SIRS Model\n' +\
-            rf'$p_{{S \rightarrow I}} = {self.pS_I}$, $p_{{I \rightarrow R}} = {self.pI_R}$,' +\
-            rf' $p_{{R \rightarrow S}} = {self.pR_S}$, $f_{{imm}} = {self.immune}$', fontsize = 16)
+            rf'$p_{{S \rightarrow I}} = {self.pS_I}$, $p_{{I \rightarrow R}} = {self.pI_R}$, $p_{{R \rightarrow S}} = {self.pR_S}$' + '\n' +\
+            f'$f_{{imm}} = {self.immune}$', fontsize = 16)
+        # Define discrete boundaries for cmap/colorbar
+        boundaries = np.linspace(-2, 1, 5)
         # Add custom colour bar
         cbar = plt.colorbar(img, ax=ax, boundaries=boundaries)
         cbar.set_ticks([-1.625, -0.875, -0.125, 0.625])
@@ -181,8 +185,8 @@ class SIRS:
         # Update the figure                                                         
         img = plt.imshow(self.board, cmap=self.cmap, vmin=-2, vmax=1)     
         plt.title('SIRS Model\n' +\
-            rf'$p_{{S \rightarrow I}} = {self.pS_I}$, $p_{{I \rightarrow R}} = {self.pI_R}$,' +\
-            rf' $p_{{R \rightarrow S}} = {self.pR_S}$, $f_{{imm}} = {self.immune}$', fontsize = 16)
+            rf'$p_{{S \rightarrow I}} = {self.pS_I}$, $p_{{I \rightarrow R}} = {self.pI_R}$, $p_{{R \rightarrow S}} = {self.pR_S}$' + '\n' +\
+            f'$f_{{imm}} = {self.immune}$', fontsize = 16)
         plt.xticks([])
         plt.yticks([]) 
         # Return image of board for animation
