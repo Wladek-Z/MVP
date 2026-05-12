@@ -157,7 +157,7 @@ def total_E(S, L, J):
 
 
 @njit
-def jackknife(E, n, C, L, kBT):
+def jackknife(E, n, C, kBT):
         """
         Compute the standard error on the heat capacity via the jackknife method.
 
@@ -165,7 +165,6 @@ def jackknife(E, n, C, L, kBT):
             E: energy measurements array
             n: number of data points
             C: measured heat capacity per spin
-            L: system size
             kBT: thermal energy
         
         Returns:
@@ -183,7 +182,7 @@ def jackknife(E, n, C, L, kBT):
                 else:
                     E_jack[j] = E[j+1]                         
             # Calculate and append the heat capacity for the jackknife sample
-            C_jack[i] = (np.mean(np.square(E_jack)) - np.mean(E_jack)**2) / (L*L*kBT*kBT)                                            
+            C_jack[i] = heat_capacity(np.mean(E_jack), np.mean(np.square(E_jack)), kBT)                                       
         # Jackknife standard error calculation
         return np.sqrt(np.sum((C_jack - C)**2)) 
 
@@ -217,6 +216,21 @@ def update(sweep, L, S, J, kBT):
         dE_total += dE
     
     return S_new, dE_total
+
+@njit
+def heat_capacity(E, E2, kBT):
+        """
+        Calculate and return heat capacity.
+
+        Arguments:
+            E: expectation value of total energy
+            E2: expectation value of total energy squared
+            kBT: thermal energy
+
+        Returns:
+            heat capacity in units kB
+        """
+        return (E2 - E**2) / (kBT * kBT)  
 
 
 class BEG:
@@ -347,7 +361,7 @@ class BEG:
         Returns:
            susceptibility
         """
-        return (M2 - M**2) / (self.L * self.L * self.kBT)                               
+        return (M2 - M**2) / self.kBT                               
     
     def avg_E(self, E):
         """
@@ -360,19 +374,7 @@ class BEG:
            average energy, average energy squared
         """
         return np.mean(E), np.mean(np.square(E))
-    
-    def heat_capacity(self, E, E2):
-        """
-        Calculate and return heat capacity.
 
-        Arguments:
-            E: expectation value of total energy
-            E2: expectation value of total energy squared
-
-        Returns:
-            heat capacity in units kB
-        """
-        return (E2 - E**2) / (self.L * self.L * self.kBT * self.kBT)   
     
     def collect4_5(self):
         """
@@ -388,14 +390,15 @@ class BEG:
             print(f"T = {T}")
             # Choose new temperature
             self.kBT = T
+            # Reset data arrays
             self.E = np.empty(1000)
             self.M = np.empty(1000)
             # Collect data
             self.run(10000)
             # Calculate heat capacity and susceptibility
             E, E2 = self.avg_E(self.E)
-            C = self.heat_capacity(E, E2)
-            sigma = jackknife(self.E, 1000, C, self.L, self.kBT)
+            C = heat_capacity(E, E2, self.kBT)
+            sigma = jackknife(self.E, 1000, C, self.kBT)
             M, M2 = self.avg_M(self.M)
             chi = self.susceptibility(M, M2)
             # Append to data arrays
@@ -419,6 +422,20 @@ class BEG:
         plt.xlabel(r'Temperature, $T$ [$J/k_B$]')
         plt.ylabel(r'Heat Capacity, $C$ [$k_B$]')
         plt.title(f'Heat Capacity vs Temperature')
+        
+        plt.tight_layout()
+        plt.show()
+    
+    def plot5(self):
+        """
+        Plot susceptibility results for task 5.
+        """
+        df = pd.read_csv("task5.txt")
+        fig = plt.figure(figsize=[8, 6])
+        plt.plot(df['T'], df['chi'], '-', color='deepskyblue')
+        plt.xlabel(r'Temperature, $T$ [$J/k_B$]')
+        plt.ylabel(r'Susceptibility, $\chi$ [$1/J$]')
+        plt.title(f'Susceptibility vs Temperature')
         
         plt.tight_layout()
         plt.show()

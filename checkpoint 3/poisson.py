@@ -518,7 +518,7 @@ class Poisson:
             cbar_label: desired label for the colour bar
         """
         fig, ax = plt.subplots(figsize=[8, 6])
-        img = plt.imshow(slice, cmap='plasma', origin='lower')
+        img = plt.contour(slice, cmap='plasma', origin='lower')
 
         plt.title(title, fontsize = 16)
         # Add colour bar
@@ -555,7 +555,7 @@ class Poisson:
         ax1.set_ylabel(r'$y$', fontsize=12)
 
         # Also plot the electric field magnitude as a contour plot
-        img = ax2.imshow(F, cmap='plasma', origin='lower')
+        img = ax2.contour(F, cmap='plasma', origin='lower')
         ax2.set_title(title2, fontsize=16)
         ax2.set_xlabel(r'$x$', fontsize=12)
         ax2.set_ylabel(r'$y$', fontsize=12)
