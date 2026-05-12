@@ -59,8 +59,8 @@ def update(old, sweep, L, pS_I, pI_R, pR_S):
             # Copy old board to new board
             new = old.copy()
             # Choose a random cell
-            i = random.randint(0, L-1)
-            j = random.randint(0, L-1)
+            i = np.random.randint(0, L)
+            j = np.random.randint(0, L)
             # Check state of cell and update accordingly
             if (old[i, j] == -1) and np.random.binomial(1, pR_S):
                 # Change recovered to susceptible

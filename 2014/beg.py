@@ -4,6 +4,7 @@ from matplotlib import pyplot as plt
 from matplotlib.animation import FuncAnimation
 import argparse
 import pandas as pd
+import matplotlib.colors as mc
 from numba import njit
 import scienceplots
 
@@ -26,8 +27,8 @@ def Glauber(L, S, J, kBT):
         dE: the energy change
     """
     # Choose random state. x and y denote rows and columns, respectively
-    x = random.randint(0, L-1)
-    y = random.randint(0, L-1)
+    x = np.random.randint(0, L)
+    y = np.random.randint(0, L)
     
     if S[x, y] == 0:
         # No effect if He3 chosen in Glauber update
@@ -62,15 +63,15 @@ def Kawasaki(L, S, J, kBT):
         dE: the energy change
     """
     # Choose random states i and j
-    xi = random.randint(0, L-1)
-    yi = random.randint(0, L-1)
-    xj = random.randint(0, L-1)
-    yj = random.randint(0, L-1)
+    xi = np.random.randint(0, L)
+    yi = np.random.randint(0, L)
+    xj = np.random.randint(0, L)
+    yj = np.random.randint(0, L)
 
     # Continue choosing j until it is distinct from i and not a nearest neighbour.
     while ((xi == xj) and (yi == yj)) or nearest_neighbor(xi, yi, xj, yj, L) or (S[xi, yi] == S[xj, yj]):
-        xj = random.randint(0, L-1)
-        yj = random.randint(0, L-1)
+        xj = np.random.randint(0, L)
+        yj = np.random.randint(0, L)
     
     # Compute the neighbour sums for sites i and j.
     NN_I = neighbour_sum(S, xi, yi, L)
@@ -126,7 +127,7 @@ def metropolis(dE, kBT):
         if dE <= 0:
             # Always accept energy-lowering flip
             return True                                      
-        elif random.uniform(0, 1) < np.exp(-dE / kBT):  
+        elif np.random.binomial(1, np.exp(-dE / kBT)):  
             # Spin flips with probability
             return True
         else:
@@ -290,11 +291,9 @@ class BEG:
             print(f"Progress: {i}/{t}", end="\r", flush=True)                                   
             
             # Take measurements every 10 sweeps
-            if i % 10 == 0:                       
-                # Calculate current magnetisation                  
-                S_sum = np.sum(self.S)                                    
+            if i % 10 == 0:                                           
                 # Record current magnetisation                                 
-                self.M[i//10 - 1] = S_sum                         
+                self.M[i//10 - 1] = np.sum(self.S)                           
                 # Record current energy  
                 self.E[i//10 - 1] = self.totalE
         # Move to next line after sweeps complete
@@ -304,11 +303,16 @@ class BEG:
         """
         Run the simulation with an animated grid.
         """
-        fig, ax = plt.subplots(figsize=(6, 6))
-        img = plt.imshow(self.S, cmap='plasma', vmin=-1, vmax=1)  
+        # Create custom cmap
+        colours = ['red', 'yellow', 'blue']
+        self.cmap = mc.ListedColormap(colours)
+        fig, ax = plt.subplots(figsize=[6, 6])
+        img = plt.imshow(self.S, cmap=self.cmap, vmin=-1, vmax=1)  
+        # Define discrete boundaries for cmap/colorbar
+        boundaries = np.linspace(-1, 1, 4)
         # Add colour bar
         cbar = plt.colorbar(img, ax=ax)
-        cbar.set_ticks([-1, 0, 1])
+        cbar.set_ticks([-2/3, 0, 2/3])
         cbar.set_ticklabels([-1, 0, 1], fontsize=16)
         cbar.set_label(r'spin $S_i$', size=16)
 
@@ -322,7 +326,7 @@ class BEG:
         """
         # Clear the axis
         plt.cla()                                       
-        plt.title(f"BEG Model\n $L$ = {self.L}, $T$ = {self.kBT}, $c$ = {self.c}")
+        plt.title(f"BEG Model\n $L$ = {self.L}, $T$ = {self.kBT}, $c$ = {self.c}", fontsize=16)
         plt.axis('off')
         # Run 10 sweeps of the algorithm
         for i in range(10):                                                                           
@@ -336,21 +340,18 @@ class BEG:
         else:
             print("pass")
         # Update the image                                                         
-        img = plt.imshow(self.S, cmap='plasma', vmin=-1, vmax=1)                                                                      
+        img = plt.imshow(self.S, cmap=self.cmap, vmin=-1, vmax=1)                                                                      
         return img
           
 
-    def avg_M(self, M):
+    def avg_M(self):
         """
         Return average magnetisation and average magnetisation squared.
-
-        Arguments:
-           M: magnetisation measurements array
         
         Returns:
            average magnetisation, average magnetisation squared
         """
-        return np.mean(M), np.mean(np.square(M))
+        return np.mean(self.M), np.mean(np.square(self.M))
     
     def susceptibility(self, M, M2):
         """
@@ -365,24 +366,20 @@ class BEG:
         """
         return (M2 - M**2) / (self.L * self.L * self.kBT)                               
     
-    def avg_E(self, E):
+    def avg_E(self):
         """
         Calculate and return average energy and average energy squared.
 
-        Arguments:
-           E: energy measurements array
-        
         Returns:
            average energy, average energy squared
         """
-        return np.mean(E), np.mean(np.square(E))
+        return np.mean(self.E), np.mean(np.square(self.E))
 
     
     def collect4_5(self):
         """
         Collect data for tasks 4 and 5 at the same time. Save results to file.
-        """
-        self.c = 0.8
+        """    
         T_list = np.arange(3, 0, -0.1)
         T_list = np.round(T_list, 1)
         data4 = []
@@ -398,10 +395,10 @@ class BEG:
             # Collect data
             self.run(10000)
             # Calculate heat capacity and susceptibility
-            E, E2 = self.avg_E(self.E)
+            E, E2 = self.avg_E()
             C = heat_capacity(E, E2, self.L, self.kBT)
             sigma = jackknife(self.E, 1000, C, self.L, self.kBT)
-            M, M2 = self.avg_M(self.M)
+            M, M2 = self.avg_M()
             chi = self.susceptibility(M, M2)
             # Append to data arrays
             data4.append([T, C, sigma])
@@ -413,34 +410,34 @@ class BEG:
         df5 = pd.DataFrame(data5, columns=['T', 'chi'])
         df5.to_csv("task5.txt", mode='w', index=False, header=True)
 
-    def plot4(self):
-        """
-        Plot heat capacity results for task 4.
-        """
-        df = pd.read_csv("task4.txt")
-        fig = plt.figure(figsize=[8, 6])
-        plt.plot(df['T'], df['C'], '-', color='deepskyblue')
-        plt.errorbar(df['T'], df['C'], yerr=df['sigma'], fmt='.', color='deepskyblue', capsize=5, ecolor='crimson')
-        plt.xlabel(r'Temperature, $T$ [$J/k_B$]')
-        plt.ylabel(r'Heat Capacity, $C$ [$k_B$]')
-        plt.title(f'Heat Capacity vs Temperature')
-        
-        plt.tight_layout()
-        plt.show()
+def plot4():
+    """
+    Plot heat capacity results for task 4.
+    """
+    df = pd.read_csv("task4.txt")
+    fig = plt.figure(figsize=[8, 6])
+    plt.plot(df['T'], df['C'], '-', color='deepskyblue')
+    plt.errorbar(df['T'], df['C'], yerr=df['sigma'], fmt='.', color='deepskyblue', capsize=5, ecolor='crimson')
+    plt.xlabel(r'Temperature, $T$ [$J/k_B$]')
+    plt.ylabel(r'Heat Capacity, $C$ [$k_B$]')
+    plt.title(f'Heat Capacity vs Temperature')
     
-    def plot5(self):
-        """
-        Plot susceptibility results for task 5.
-        """
-        df = pd.read_csv("task5.txt")
-        fig = plt.figure(figsize=[8, 6])
-        plt.plot(df['T'], df['chi'], '-', color='deepskyblue')
-        plt.xlabel(r'Temperature, $T$ [$J/k_B$]')
-        plt.ylabel(r'Susceptibility, $\chi$ [$1/J$]')
-        plt.title(f'Susceptibility vs Temperature')
-        
-        plt.tight_layout()
-        plt.show()
+    plt.tight_layout()
+    plt.show()
+
+def plot5():
+    """
+    Plot susceptibility results for task 5.
+    """
+    df = pd.read_csv("task5.txt")
+    fig = plt.figure(figsize=[8, 6])
+    plt.plot(df['T'], df['chi'], '-', color='deepskyblue')
+    plt.xlabel(r'Temperature, $T$ [$J/k_B$]')
+    plt.ylabel(r'Susceptibility, $\chi$ [$1/J$]')
+    plt.title(f'Susceptibility vs Temperature')
+    
+    plt.tight_layout()
+    plt.show()
 
 if __name__ == "__main__":
     """Parse command line arguments"""
@@ -453,19 +450,18 @@ if __name__ == "__main__":
     parser.add_argument('--plot', action='store_true', help='Plot results for a given task')
     args = parser.parse_args()
 
-    beg = BEG(args.size, args.temperature, args.fraction)
-
     if args.task == 'animation':
+        beg = BEG(args.size, args.temperature, args.fraction)
         beg.run_ani()  
     elif args.collect:
         if (args.task == '4') or (args.task == '5'):
+            beg = BEG(50, None, 0.8)
             beg.collect4_5()
         elif args.task == '6':
+            beg = BEG(50, None, 0.2)
             beg.collect6()
     elif args.plot:
         if args.task == '4':
-            beg.plot4()
+            plot4()
         elif args.task == '5':
-            beg.plot5()
-        elif args.task == '6':
-            beg.plot6()
+            plot5()

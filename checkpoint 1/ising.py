@@ -29,8 +29,8 @@ def Glauber(sweep, L, S, J, kBT):
     dE_total = 0
     for i in range(sweep):
         # Choose random state. x and y denote rows and columns, respectively
-        x = random.randint(0, L-1)
-        y = random.randint(0, L-1)
+        x = np.random.randint(0, L)
+        y = np.random.randint(0, L)
 
         # Sum up nearest neighbours
         I_sum = neighbour_sum(S, x, y, L)
@@ -66,14 +66,14 @@ def Kawasaki(sweep, L, S, J, kBT):
     dE_total = 0
     for i in range(sweep):
         #choose random states i and j
-        xi = random.randint(0, L-1)
-        yi = random.randint(0, L-1)
-        xj = random.randint(0, L-1)
-        yj = random.randint(0, L-1)
+        xi = np.random.randint(0, L)
+        yi = np.random.randint(0, L)
+        xj = np.random.randint(0, L)
+        yj = np.random.randint(0, L)
         #continue choosing j state until it is distinct from the i state
         while ([xi, yi] == [xj, yj]) or (S[xi, yi] == S[xj, yj]):
-            xj = random.randint(0, L-1)
-            yj = random.randint(0, L-1)
+            xj = np.random.randint(0, L)
+            yj = np.random.randint(0, L)
 
         # Compute the nearest neighbour sum for sites i and j
         NN_I = neighbour_sum(S, xi, yi, L)
@@ -134,7 +134,7 @@ def metropolis(dE, kBT):
         if dE <= 0:
             # Always accept energy-lowering flip
             return True                                      
-        elif random.uniform(0, 1) < np.exp(-dE / kBT):  
+        elif np.random.binomial(1, np.exp(-dE / kBT)):  
             # Spin flips with probability
             return True
         else:

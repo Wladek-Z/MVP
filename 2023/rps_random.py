@@ -31,8 +31,8 @@ def update_rps(old, sweep, L, p1, p2, p3):
             # Copy old board to new board
             new = old.copy()
             # Choose a random cell
-            i = random.randint(0, L-1)
-            j = random.randint(0, L-1)
+            i = np.random.randint(0, L)
+            j = np.random.randint(0, L)
             # Compute list of neighbours
             up = (i - 1) % L
             down = (i + 1) % L
