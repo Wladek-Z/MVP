@@ -22,40 +22,29 @@ def Glauber(sweep, L, S, J, kBT):
         kBT: the thermal energy
 
     Returns:
-        S_new: the updated spin lattice
-        dE: the energy change
+        S: the updated spin lattice
+        dE_total: the total energy change
     """
     # Initialise net energy change over one sweep
     dE_total = 0
     for i in range(sweep):
-        # Copy the spin lattice
-        S_new = S.copy()
         # Choose random state. x and y denote rows and columns, respectively
         x = random.randint(0, L-1)
         y = random.randint(0, L-1)
-        
-        # Nearest neighbours in 2 dimensions
-        NN = [(-1, 0), (1, 0), (0, -1), (0, 1)]       
-        # Initialise sum over pairs           
-        I_sum = 0                                                
-        # Loop over nearest neighbours 'k'
-        for dx, dy in NN:                                    
-            xk = (x + dx) % L
-            yk = (y + dy) % L
-            # Add contribution due to pair
-            I_sum += S_new[x, y] * S_new[xk, yk] 
+
+        # Sum up nearest neighbours
+        I_sum = neighbour_sum(S, x, y, L)
         # Shortcut energy change calculation
-        dE = 2 * (J * I_sum)
+        dE = 2 * J * S[x, y] * I_sum
 
         # Apply the Metropolis algorithm to decide whether to flip the spin state i
         if metropolis(dE, kBT):
             # Flip the spin
-            S_new[x, y] *= -1
-            S = S_new.copy()
+            S[x, y] *= -1
             # Update the net energy change
             dE_total += dE
 
-    return S_new, dE_total
+    return S, dE_total
 
 @njit
 def Kawasaki(sweep, L, S, J, kBT):
@@ -70,56 +59,68 @@ def Kawasaki(sweep, L, S, J, kBT):
         kBT: the thermal energy
 
     Returns:
-        S_new: the updated spin lattice
-        dE: the energy change
+        S: the updated spin lattice
+        dE_total: the total energy change
     """
     # Initialise net energy change over one sweep
     dE_total = 0
     for i in range(sweep):
-        # Copy the spin lattice
-        S_new = S.copy()
         #choose random states i and j
         xi = random.randint(0, L-1)
         yi = random.randint(0, L-1)
         xj = random.randint(0, L-1)
         yj = random.randint(0, L-1)
         #continue choosing j state until it is distinct from the i state
-        while ([xi, yi] == [xj, yj]) or (S_new[xi, yi] == S_new[xj, yj]):
+        while ([xi, yi] == [xj, yj]) or (S[xi, yi] == S[xj, yj]):
             xj = random.randint(0, L-1)
             yj = random.randint(0, L-1)
 
-        # Nearest neighbours
-        NN = [(-1, 0), (1, 0), (0, -1), (0, 1)]
-        # Initialise sum over pairs                      
-        I_sum = 0                                                    
-        J_sum = 0                                                   
-        # Loop over nearest neighbours 'k' for each state
-        for dx, dy in NN:                                        
-            xk = (xi + dx) % L
-            yk = (yi + dy) % L
-            # Swapping neighbouring i and j has no effect
-            if [xk, yk] != [xj, yj]:            
-                # Compute contribution due to pair             
-                I_sum += S_new[xj, yj] * S_new[xk, yk] 
+        # Compute the nearest neighbour sum for sites i and j
+        NN_I = neighbour_sum(S, xi, yi, L)
+        NN_J = neighbour_sum(S, xj, yj, L)
+        # Compensate for if sites i and j are nearest neighbours
+        if nearest_neighbor(xi, yi, xj, yj, L):
+            NN_I -= S[xj, yj]
+            NN_J -= S[xi, yi]
 
-            xk = (xj + dx) % L
-            yk = (yj + dy) % L
-            # Swapping neighbouring i and j has no effect
-            if [xk, yk] != [xi, yi]:                     
-                # Compute contribution due to pair
-                J_sum += S_new[xi, yi] * S_new[xk, yk]
         # Calculate total energy change
-        dE = -2 * J * (I_sum + J_sum) 
+        dE = J * (S[xi, yi] - S[xj, yj]) * (NN_I - NN_J)
 
         # Apply the Metropolis algorithm to decide whether to switch the spin states i and j
         if metropolis(dE, kBT):
             # Swap the spin states i and j
-            S_new[xi, yi], S_new[xj, yj] = S_new[xj, yj], S_new[xi, yi]
-            S = S_new.copy()
+            S[xi, yi], S[xj, yj] = S[xj, yj], S[xi, yi]
             # Update net energy change
             dE_total += dE    
 
-    return S_new, dE_total
+    return S, dE_total
+
+@njit
+def nearest_neighbor(xi, yi, xj, yj, L):
+    """
+    Return True when two sites are nearest neighbours on the periodic lattice.
+    """
+    return ((xi == (xj - 1) % L) and (yi == yj)) or \
+           ((xi == (xj + 1) % L) and (yi == yj)) or \
+           ((xi == xj) and (yi == (yj - 1) % L)) or \
+           ((xi == xj) and (yi == (yj + 1) % L))
+
+@njit
+def neighbour_sum(S, x, y, L):
+    """
+    Sum up the contributions from the 4 nearest neighbours of site (x, y) of S.
+    
+    Arguments:
+        S: spin lattice
+        x: coordinate along axis 0
+        y: coordinate along axis 1
+        L: system size
+        
+    Returns:
+        the nearest neighbour sum
+    """
+    return S[(x-1) % L, y] + S[(x+1) % L, y] + S[x, (y-1) % L] + S[x, (y+1) % L]
+
 
 @njit
 def metropolis(dE, kBT):
@@ -154,18 +155,11 @@ def total_E(S, L, J):
             total energy of the system
         """
         # Initialise energy sum
-        E_sum = 0                                          
-        # Nearest neighbours       
-        NN = [(-1, 0), (1, 0), (0, -1), (0, 1)]                   
+        E_sum = 0                                        
         # Loop over all spins
         for i in range(L):                                                          
             for j in range(L):
-                # Loop over nearest neighbours 'k'
-                for drow, dcol in NN:                             
-                    k_row = (i + drow) % L
-                    k_col = (j + dcol) % L
-                    # Add contribution due to pair
-                    E_sum += -S[i, j] * S[k_row, k_col] 
+                E_sum -= S[i, j] * neighbour_sum(S, i, j, L)
         # Avoid double counting
         return J * E_sum / 2 
 
@@ -226,9 +220,6 @@ class Ising:
         self.M = np.empty(1000)                          
         # Initialise empty list for energy measurements       
         self.E = np.empty(1000)                                  
-
-        while dynamics not in {'G', 'K'}:
-            dynamics = input("Please enter 'G' or 'K' ")
 
         # Initialise random spin configuration
         self.S = np.random.choice([-1, 1], size=(L, L))       
@@ -295,6 +286,10 @@ class Ising:
             self.S, dE = self.update(self.sweep, self.L, S_old, self.J, self.kBT)
             # Update total energy
             self.totalE += dE  
+        if self.totalE != total_E(self.S, self.L, self.J):
+            print("fail")
+        else:
+            print("pass")
         # Update the image                                                         
         img = plt.imshow(self.S, cmap='plasma', vmin=-1, vmax=1)                                                                      
         return img
@@ -362,4 +357,4 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     I = Ising(args.size, args.temperature, args.coupling, args.dynamics)
-    I.run_ani()  
+    I.run_ani() 

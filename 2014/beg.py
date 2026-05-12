@@ -3,6 +3,7 @@ import random
 from matplotlib import pyplot as plt
 from matplotlib.animation import FuncAnimation
 import argparse
+import pandas as pd
 from numba import njit
 import scienceplots
 
@@ -32,25 +33,18 @@ def Glauber(L, S, J, kBT):
         # No effect if He3 chosen in Glauber update
         return S, 0
     else:
-        # Nearest neighbours in 2 dimensions
-        NN = [(-1, 0), (1, 0), (0, -1), (0, 1)]       
-        # Initialise sum over pairs           
-        I_sum = 0                                                
-        # Loop over nearest neighbours 'k'
-        for dx, dy in NN:                                    
-            xk = (x + dx) % L
-            yk = (y + dy) % L
-            # Add contribution due to pair
-            I_sum += S[x, y] * S[xk, yk] 
+        # Sum up nearest neighbours
+        NN_I = neighbour_sum(S, x, y, L)
         # Shortcut energy change calculation
-        dE = 2 * (J * I_sum)
+        dE = 2 * J * S[x, y] * NN_I
 
         # Apply the Metropolis algorithm to decide whether to flip the spin state i
         if metropolis(dE, kBT):
             # Flip the spin
             S[x, y] *= -1
-
-        return S, dE
+            return S, dE
+        else: 
+            return S, 0
 
 @njit
 def Kawasaki(L, S, J, kBT):
@@ -67,46 +61,58 @@ def Kawasaki(L, S, J, kBT):
         S: the updated spin lattice
         dE: the energy change
     """
-    #choose random states i and j
+    # Choose random states i and j
     xi = random.randint(0, L-1)
     yi = random.randint(0, L-1)
     xj = random.randint(0, L-1)
     yj = random.randint(0, L-1)
-    #continue choosing j state until it is distinct from the i state
-    while ([xi, yi] == [xj, yj]) or (S[xi, yi] == S[xj, yj]):
+
+    # Continue choosing j until it is distinct from i and not a nearest neighbour.
+    while ((xi == xj) and (yi == yj)) or nearest_neighbor(xi, yi, xj, yj, L) or (S[xi, yi] == S[xj, yj]):
         xj = random.randint(0, L-1)
         yj = random.randint(0, L-1)
+    
+    # Compute the neighbour sums for sites i and j.
+    NN_I = neighbour_sum(S, xi, yi, L)
+    NN_J = neighbour_sum(S, xj, yj, L)
 
-    # Nearest neighbours
-    NN = [(-1, 0), (1, 0), (0, -1), (0, 1)]
-    # Initialise sum over pairs                      
-    I_sum = 0                                                    
-    J_sum = 0                                                   
-    # Loop over nearest neighbours 'k' for each state
-    for dx, dy in NN:                                        
-        xk = (xi + dx) % L
-        yk = (yi + dy) % L
-        # Swapping neighbouring i and j has no effect
-        if [xk, yk] != [xj, yj]:            
-            # Compute contribution due to pair             
-            I_sum += S[xj, yj] * S[xk, yk] 
+    # Compute resulting energy change
+    dE = J * (S[xi, yi] - S[xj, yj]) * (NN_I - NN_J)
 
-        xk = (xj + dx) % L
-        yk = (yj + dy) % L
-        # Swapping neighbouring i and j has no effect
-        if [xk, yk] != [xi, yi]:                     
-            # Compute contribution due to pair
-            J_sum += S[xi, yi] * S[xk, yk]
-
-    # Calculate total energy change
-    dE = -2 * J * (I_sum + J_sum) 
-
-    # Apply the Metropolis algorithm to decide whether to switch the spin states i and j
+    # Apply the Metropolis algorithm to decide whether to swap the spin states i and j
     if metropolis(dE, kBT):
         # Swap the spin states i and j
         S[xi, yi], S[xj, yj] = S[xj, yj], S[xi, yi]
+        return S, dE
+    else:
+        # No change
+        return S, 0
 
-    return S, dE
+@njit
+def nearest_neighbor(xi, yi, xj, yj, L):
+    """
+    Return True when two sites are nearest neighbours on the periodic lattice.
+    """
+    return ((xi == (xj - 1) % L) and (yi == yj)) \
+        or ((xi == (xj + 1) % L) and (yi == yj)) \
+        or ((xi == xj) and (yi == (yj - 1) % L)) \
+        or ((xi == xj) and (yi == (yj + 1) % L))
+    
+@njit
+def neighbour_sum(S, x, y, L):
+    """
+    Sum up the contributions from the 4 nearest neighbours of site (x, y) of S.
+    
+    Arguments:
+        S: spin lattice
+        x: coordinate along axis 0
+        y: coordinate along axis 1
+        L: system size
+        
+    Returns:
+        the nearest neighbour sum
+    """
+    return S[(x-1) % L, y] + S[(x+1) % L, y] + S[x, (y-1) % L] + S[x, (y+1) % L]
 
 @njit
 def metropolis(dE, kBT):
@@ -141,18 +147,11 @@ def total_E(S, L, J):
             total energy of the system
         """
         # Initialise energy sum
-        E_sum = 0                                          
-        # Nearest neighbours       
-        NN = [(-1, 0), (1, 0), (0, -1), (0, 1)]                   
+        E_sum = 0                                        
         # Loop over all spins
         for i in range(L):                                                          
             for j in range(L):
-                # Loop over nearest neighbours 'k'
-                for drow, dcol in NN:                             
-                    k_row = (i + drow) % L
-                    k_col = (j + dcol) % L
-                    # Add contribution due to pair
-                    E_sum += -S[i, j] * S[k_row, k_col] 
+                E_sum -= S[i, j] * neighbour_sum(S, i, j, L)
         # Avoid double counting
         return J * E_sum / 2 
 
@@ -163,7 +162,7 @@ def jackknife(E, n, C, L, kBT):
         Compute the standard error on the heat capacity via the jackknife method.
 
         Arguments:
-            E_array: energy measurements array
+            E: energy measurements array
             n: number of data points
             C: measured heat capacity per spin
             L: system size
@@ -270,7 +269,9 @@ class BEG:
             S_old = self.S.copy()                                                             
             self.S, dE = update(self.sweep, self.L, S_old, self.J, self.kBT)
             # Update total energy
-            self.totalE += dE                                        
+            self.totalE += dE     
+            # Print live progress
+            print(f"Progress: {i}/{t}", end="\r", flush=True)                                   
             
             # Take measurements every 10 sweeps
             if i % 10 == 0:                       
@@ -279,7 +280,9 @@ class BEG:
                 # Record current magnetisation                                 
                 self.M[i//10 - 1] = S_sum                         
                 # Record current energy  
-                self.E[i//10 - 1] = self.totalE              
+                self.E[i//10 - 1] = self.totalE
+        # Move to next line after sweeps complete
+        print()              
                 
     def run_ani(self):
         """
@@ -312,6 +315,10 @@ class BEG:
             self.S, dE = update(self.sweep, self.L, S_old, self.J, self.kBT)
             # Update total energy
             self.totalE += dE  
+        if self.totalE != total_E(self.S, self.L, self.J):
+            print("fail")
+        else:
+            print("pass")
         # Update the image                                                         
         img = plt.imshow(self.S, cmap='plasma', vmin=-1, vmax=1)                                                                      
         return img
@@ -335,7 +342,7 @@ class BEG:
 
         Arguments:
             M: expectation value of total magnetisation
-           M2: expectation value of total magnetisation squared
+            M2: expectation value of total magnetisation squared
            
         Returns:
            susceptibility
@@ -363,11 +370,58 @@ class BEG:
             E2: expectation value of total energy squared
 
         Returns:
-            heat capacity
+            heat capacity in units kB
         """
         return (E2 - E**2) / (self.L * self.L * self.kBT * self.kBT)   
-                          
- 
+    
+    def collect4_5(self):
+        """
+        Collect data for tasks 4 and 5 at the same time. Save results to file.
+        """
+        self.c = 0.8
+        T_list = np.arange(3, 0, -0.1)
+        T_list = np.round(T_list, 1)
+        data4 = []
+        data5 = []
+
+        for T in T_list:
+            print(f"T = {T}")
+            # Choose new temperature
+            self.kBT = T
+            self.E = np.empty(1000)
+            self.M = np.empty(1000)
+            # Collect data
+            self.run(10000)
+            # Calculate heat capacity and susceptibility
+            E, E2 = self.avg_E(self.E)
+            C = self.heat_capacity(E, E2)
+            sigma = jackknife(self.E, 1000, C, self.L, self.kBT)
+            M, M2 = self.avg_M(self.M)
+            chi = self.susceptibility(M, M2)
+            # Append to data arrays
+            data4.append([T, C, sigma])
+            data5.append([T, chi])
+        
+        # Save to files
+        df4 = pd.DataFrame(data4, columns=['T', 'C', 'sigma'])
+        df4.to_csv("task4.txt", mode='w', index=False, header=True)
+        df5 = pd.DataFrame(data5, columns=['T', 'chi'])
+        df5.to_csv("task5.txt", mode='w', index=False, header=True)
+
+    def plot4(self):
+        """
+        Plot heat capacity results for task 4.
+        """
+        df = pd.read_csv("task4.txt")
+        fig = plt.figure(figsize=[8, 6])
+        plt.plot(df['T'], df['C'], '-', color='deepskyblue')
+        plt.errorbar(df['T'], df['C'], yerr=df['sigma'], fmt='.', color='deepskyblue', capsize=5, ecolor='crimson')
+        plt.xlabel(r'Temperature, $T$ [$J/k_B$]')
+        plt.ylabel(r'Heat Capacity, $C$ [$k_B$]')
+        plt.title(f'Heat Capacity vs Temperature')
+        
+        plt.tight_layout()
+        plt.show()
 
 if __name__ == "__main__":
     """Parse command line arguments"""
@@ -375,7 +429,24 @@ if __name__ == "__main__":
     parser.add_argument('-L', '--size', type=int, default=50, help='System size (default: 50)')
     parser.add_argument('-T', '--temperature', type=float, default=1, help='Temperature (default: 1)')
     parser.add_argument('-c', '--fraction', type=float, default=0.5, help='Fraction of sites occupied by helium 4 (default: 0.5)')
+    parser.add_argument('-t', '--task', choices=['animation', '4', '5', '6'], default='animation', help='Select a task for the simulation (default: animation)')
+    parser.add_argument('--collect', action='store_true', help='Collect data required for a given task')
+    parser.add_argument('--plot', action='store_true', help='Plot results for a given task')
     args = parser.parse_args()
 
     beg = BEG(args.size, args.temperature, args.fraction)
-    beg.run_ani()  
+
+    if args.task == 'animation':
+        beg.run_ani()  
+    elif args.collect:
+        if (args.task == '4') or (args.task == '5'):
+            beg.collect4_5()
+        elif args.task == '6':
+            beg.collect6()
+    elif args.plot:
+        if args.task == '4':
+            beg.plot4()
+        elif args.task == '5':
+            beg.plot5()
+        elif args.task == '6':
+            beg.plot6()
