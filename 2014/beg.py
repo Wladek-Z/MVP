@@ -157,7 +157,7 @@ def total_E(S, L, J):
 
 
 @njit
-def jackknife(E, n, C, kBT):
+def jackknife(E, n, C, L, kBT):
         """
         Compute the standard error on the heat capacity via the jackknife method.
 
@@ -165,6 +165,7 @@ def jackknife(E, n, C, kBT):
             E: energy measurements array
             n: number of data points
             C: measured heat capacity per spin
+            L: system size
             kBT: thermal energy
         
         Returns:
@@ -182,7 +183,7 @@ def jackknife(E, n, C, kBT):
                 else:
                     E_jack[j] = E[j+1]                         
             # Calculate and append the heat capacity for the jackknife sample
-            C_jack[i] = heat_capacity(np.mean(E_jack), np.mean(np.square(E_jack)), kBT)                                       
+            C_jack[i] = heat_capacity(np.mean(E_jack), np.mean(np.square(E_jack)), L, kBT)                                       
         # Jackknife standard error calculation
         return np.sqrt(np.sum((C_jack - C)**2)) 
 
@@ -218,19 +219,20 @@ def update(sweep, L, S, J, kBT):
     return S_new, dE_total
 
 @njit
-def heat_capacity(E, E2, kBT):
+def heat_capacity(E, E2, L, kBT):
         """
         Calculate and return heat capacity.
 
         Arguments:
             E: expectation value of total energy
             E2: expectation value of total energy squared
+            L: system size
             kBT: thermal energy
 
         Returns:
             heat capacity in units kB
         """
-        return (E2 - E**2) / (kBT * kBT)  
+        return (E2 - E**2) / (L * L * kBT * kBT)  
 
 
 class BEG:
@@ -361,7 +363,7 @@ class BEG:
         Returns:
            susceptibility
         """
-        return (M2 - M**2) / self.kBT                               
+        return (M2 - M**2) / (self.L * self.L * self.kBT)                               
     
     def avg_E(self, E):
         """
@@ -397,8 +399,8 @@ class BEG:
             self.run(10000)
             # Calculate heat capacity and susceptibility
             E, E2 = self.avg_E(self.E)
-            C = heat_capacity(E, E2, self.kBT)
-            sigma = jackknife(self.E, 1000, C, self.kBT)
+            C = heat_capacity(E, E2, self.L, self.kBT)
+            sigma = jackknife(self.E, 1000, C, self.L, self.kBT)
             M, M2 = self.avg_M(self.M)
             chi = self.susceptibility(M, M2)
             # Append to data arrays

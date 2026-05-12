@@ -2,6 +2,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.animation import FuncAnimation
 import argparse
+import matplotlib.colors as mc
 from numba import njit
 import scienceplots
 
@@ -14,7 +15,7 @@ def laplacian(x, L):
     Calculate the laplacian of x.
     
     Arguments:
-        x: the chemical potential or the order parameter field
+        x: the concentration
         L: system size
     
     Returns:
@@ -30,23 +31,6 @@ def laplacian(x, L):
             laplacian[i, j] = x[up, j] + x[down, j] + x[i, left] + x[i, right] - 4 * x[i, j]
 
     return laplacian
-
-@njit
-def update(phi, L, dt, dx):
-        """
-        Calculate the next order parameter field.
-        
-        Arguments:
-            phi: the current order parameter field
-            L: system size
-            dt: timestep
-            dx: spatial resolution
-        
-        Returns:
-            the updated order parameter field
-        """
-        mu = - phi * (1 - phi**2) - dx**(-2) * laplacian(phi, L)
-        return phi + dt / dx**2 * laplacian(mu, L)
 
 @njit
 def free_energy(phi, L, dx):
@@ -75,41 +59,112 @@ def free_energy(phi, L, dx):
     # return free energy
     return np.sum(f) 
 
-class CahnHilliard:
+@njit
+def type_field(a, b, c, L):
     """
-    Class for discretising the Cahn-Hilliard equation, to describe phase
-    separation in a physical system.
+    Calculate the type field for a given set of concentrations.
+    
+    Arguments:
+        a: concentration of chemical species a
+        b: concentration of chemical species b
+        c: concentration of chemical species c
+        L: system size
+    
+    Returns:
+        tau: the type field
     """
-    def __init__(self, L, phi_0, dt):
+    # Define (1 - a - b - c) field
+    abc = 1 - a - b - c
+    # Initialise the type field
+    tau = np.empty(shape=(L, L))
+    # Calculate each component of the type field
+    for i in range(L):
+        for j in range(L):
+            tau[i, j] = np.argmax(np.array([abc[i, j], a[i, j], b[i, j], c[i, j]]))
+
+    return tau
+
+@njit
+def update(a, b, c, L, D, q, p, dt):
+    """
+    Calculate the next concentrations of chemical species a, b, and c.
+    
+    Arguments:
+        a: concentration of chemical species a
+        b: concentration of chemical species b
+        c: concentration of chemical species c
+        L: system size
+        D: diffusion coefficient
+        q: reaction parameter q
+        p: reaction parameter p
+        dt: timestep
+    
+    Returns:
+        a_new: the updated concentration of a
+        b_new: the updated concentration of b
+        c_new: the updated concentration of c
+    """
+    # Calculation laplacians
+    lap_a = laplacian(a, L)
+    lap_b = laplacian(b, L)
+    lap_c = laplacian(c, L)
+    # Update concentrations
+    a_new = a + dt * (D * lap_a + q * a * (1 - a - b - c) - p * a * c)
+    b_new = b + dt * (D * lap_b + q * b * (1 - a - b - c) - p * a * b)
+    c_new = c + dt * (D * lap_c + q * c * (1 - a - b - c) - p * b * c)
+    # Return updated concentrations
+    return a_new, b_new, c_new
+
+class Chemicals:
+    """
+    Class for solving a set of coupled partial differential equations for the concentrations of 
+    the reactive chemical species a, b, and c.
+    """
+    def __init__(self, L, dt, D, q, p):
         """
         Arguments:
             L: system size
-            phi_0: the order parameter at time = 0
             dt: time step
+            D: diffusion coefficient
+            q: reaction parameter q
+            p: reaction parameter p
         """
         self.L = L
         self.dt = dt
         self.dx = 1
-        # Set initial state of board to phi_0 plus some small random noise
-        self.phi = (np.ones((L, L)) * phi_0) + np.random.uniform(-0.01, high=0.01, size=(L, L))
-
+        self.D = D
+        self.q = q
+        self.p = p
+        # Initialise concentrations of a, b, and c
+        self.a = np.random.uniform(0, 1/3, (L, L))
+        self.b = np.random.uniform(0, 1/3, (L, L))
+        self.c = np.random.uniform(0, 1/3, (L, L))
+        # Calculate initial type field
+        self.tau = type_field(self.a, self.b, self.c, L)
+    
     def animation(self):
         """
         Run and animate the simulation.
         """
+        # Define custom colormap
+        colours = ['gray', 'red', 'green', 'blue']
+        self.cmap = mc.ListedColormap(colours)
         # Create figure and image
         fig, ax = plt.subplots(figsize=[8, 6])
-        img = plt.imshow(self.phi, cmap='ocean', vmin=-1, vmax=1)
-        plt.title('Phase Separation', fontsize = 16)
-        # Add colour bar
-        cbar = plt.colorbar(img, ax=ax)
-        cbar.set_ticks([-1, 0, 1])
-        cbar.set_ticklabels([-1, 0, 1], fontsize=16)
-        cbar.set_label(r'order parameter $\phi$', size=16)
+        img = plt.imshow(self.tau, cmap=self.cmap, vmin=0, vmax=3)
+        # Set title
+        plt.title('Chemical Concentrations', fontsize = 16)
+        # Define discrete boundaries for colour bar
+        boundaries = np.linspace(0, 3, 5)
+        # Add custom colour bar
+        cbar = plt.colorbar(img, ax=ax, boundaries=boundaries)
+        cbar.set_ticks([3/8, 9/8, 15/8, 21/8])
+        cbar.set_ticklabels([0, 1, 2, 3], fontsize=16)
+        cbar.set_label(r'type field $\tau$', size=16)
         # Clear axis labels
         plt.xticks([])
-        plt.yticks([])  
-
+        plt.yticks([]) 
+        
         ani = FuncAnimation(fig, self.frame, cache_frame_data=False)
         plt.tight_layout()
         plt.show()
@@ -121,17 +176,16 @@ class CahnHilliard:
         Returns:
             img: figure displaying the (old) system
         """
-        # Update 1000 times
-        for i in range(1000):
-            phi = self.phi.copy()
-            self.phi = update(phi, self.L, self.dt, self.dx)
-
+        # Update 100 times
+        for i in range(100):
+            a, b, c = self.a.copy(), self.b.copy(), self.c.copy()
+            self.a, self.b, self.c = update(a, b, c, self.L, self.D, self.q, self.p, self.dt)
+            self.tau = type_field(self.a, self.b, self.c, self.L)
         # Clear the figure
         plt.cla()      
         # Update the figure                                                         
-        img = plt.imshow(self.phi, cmap='ocean', vmin=-1, vmax=1) 
-
-        plt.title('Phase Separation with Cahn-Hilliard Equation', fontsize = 16)
+        img = plt.imshow(self.tau, cmap=self.cmap, vmin=0, vmax=3) 
+        plt.title('Chemical Concentrations', fontsize = 16)
         plt.xticks([])
         plt.yticks([]) 
         # Return image of board for animation
@@ -172,7 +226,7 @@ class CahnHilliard:
                 t += self.dt
                 # Run the update procedure
                 phi = self.phi.copy()
-                self.phi = update(phi, self.L, self.dt, self.dx)
+                self.phi = self.update(phi)
                 # Calculate the free energy density
                 f = free_energy(phi, self.L, self.dx)
                 # Write to file
@@ -181,8 +235,6 @@ class CahnHilliard:
                 if t > 8000:
                     break
                 
-                    
-
     def plot(self):
         """
         Plot the free energy against time.
@@ -208,19 +260,17 @@ class CahnHilliard:
     
 if __name__ == "__main__":
     argparser = argparse.ArgumentParser(description='Cahn-Hilliard simulation')
-    argparser.add_argument('--data', action='store_true', help='Collect data for task 5')
+    argparser.add_argument('--collect', action='store_true', help='Collect data for a given task')
     argparser.add_argument('--animation', action='store_true', help='Run the animation')
-    argparser.add_argument('--plot', action='store_true', help='Plot the free energy for task 5')
+    argparser.add_argument('--plot', action='store_true', help='Plot the results for a given task')
     argparser.add_argument('-L', '--size', type=int, default=50, help='Systems size (default: 50)')
     argparser.add_argument('-dt', '--timestep', type=float, default=0.01, help='Time step (default: 0.01)')
-    argparser.add_argument('-phi0', '--initialphi', type=float, default=0.0, help='Initial state of the order parameter field (default: 0.0)')
+    argparser.add_argument('-D', type=float, default=1, help='Diffusion coefficient (default: 1)')
+    argparser.add_argument('-q', type=float, default=1, help='Reaction parameter q (default: 1)')
+    argparser.add_argument('-p', type=float, default=0.5, help='Reaction parameter p (default: 0.5)')
     args = argparser.parse_args()
     
-    CH = CahnHilliard(args.size, args.initialphi, args.timestep)
+    abc = Chemicals(args.size, args.timestep, args.D, args.q, args.p)
 
     if args.animation:
-        CH.animation()
-    elif args.data:
-        CH.task5()
-    elif args.plot:
-        CH.plot()
+        abc.animation()
